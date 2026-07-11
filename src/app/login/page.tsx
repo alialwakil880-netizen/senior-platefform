@@ -78,6 +78,7 @@ export default function AuthPage() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [tempRegData, setTempRegData] = useState<RegisterFormValues | null>(null);
+  const [resendTimer, setResendTimer] = useState(60);
 
   const leftEyeRef = useRef<HTMLDivElement>(null);
   const rightEyeRef = useRef<HTMLDivElement>(null);
@@ -119,6 +120,16 @@ export default function AuthPage() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isOtpStep && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isOtpStep, resendTimer]);
 
   const handleForgotPassword = () => {
     const whatsappText = encodeURIComponent(
@@ -223,6 +234,33 @@ export default function AuthPage() {
       setMessage({
         type: "error",
         text: error?.message || "حدث خطأ في الاتصال. يرجى المحاولة لاحقاً.",
+      });
+    }
+  };
+
+  // إعادة إرسال الكود
+  const handleResendOtp = async () => {
+    if (!tempRegData || resendTimer > 0) return;
+    setMessage({ type: "", text: "" });
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'sms',
+        phone: `+2${tempRegData.studentPhone}`
+      });
+
+      if (error) throw error;
+
+      setResendTimer(60);
+      setMessage({
+        type: "success",
+        text: "تم إعادة إرسال الكود بنجاح. يرجى مراجعة رسائل الـ SMS الخاصة بك.",
+      });
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      setMessage({
+        type: "error",
+        text: "حدث خطأ أثناء إعادة إرسال الكود. يرجى المحاولة لاحقاً.",
       });
     }
   };
@@ -504,10 +542,22 @@ export default function AuthPage() {
               <span>تأكيد الحساب</span>
               <CheckCircle2 className="w-4 h-4" />
             </Button>
+
+            <button
+              onClick={handleResendOtp}
+              disabled={resendTimer > 0}
+              className={`w-full text-xs font-bold mt-2 py-3 rounded-xl border transition-colors ${
+                resendTimer > 0
+                  ? darkMode ? 'text-slate-500 border-slate-800 bg-slate-900/50 cursor-not-allowed' : 'text-slate-400 border-slate-200 bg-slate-50 cursor-not-allowed'
+                  : darkMode ? 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10' : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'
+              }`}
+            >
+              {resendTimer > 0 ? `إعادة إرسال الكود (${resendTimer} ثانية)` : "إعادة إرسال الكود الآن"}
+            </button>
             
             <button
               onClick={() => setIsOtpStep(false)}
-              className={`w-full text-xs font-medium mt-4 ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`w-full text-xs font-medium mt-2 ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
             >
               العودة للتسجيل
             </button>
