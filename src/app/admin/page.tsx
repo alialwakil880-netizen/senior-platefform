@@ -146,6 +146,8 @@ export default function AdminPage() {
   const [editingLecture, setEditingLecture] = useState<LectureItem | null>(null);
   const [newPdfName, setNewPdfName] = useState("");
   const [newPdfUrl, setNewPdfUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   // حالة إضافة سؤال MCQ جديد في المحاضرة
   const [showAddQuestion, setShowAddQuestion] = useState(false);
@@ -519,21 +521,73 @@ export default function AdminPage() {
     alert(`تم حفظ ونشر محتوى المحاضرة "${finalizedLecture.title}" بنجاح وتحديثها في لوحة الطلاب.`);
   };
 
-  const handleAddMaterial = (e: React.FormEvent) => {
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleAddMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingLecture || !newPdfName.trim()) return;
-    const newMat: LectureMaterial = {
-      id: `mat-${Date.now()}`,
-      name: newPdfName.trim(),
-      url: newPdfUrl.trim() || "#",
-      size: "2.5 MB",
-    };
-    setEditingLecture({
-      ...editingLecture,
-      materials: [...editingLecture.materials, newMat],
-    });
-    setNewPdfName("");
-    setNewPdfUrl("");
+    if (!editingLecture) return;
+    if (!newPdfName.trim()) {
+      alert("الرجاء كتابة اسم الملف أو المذكرة أولاً.");
+      return;
+    }
+    if (!selectedFile && !newPdfUrl.trim()) {
+      alert("الرجاء اختيار ملف أو إدخال رابط خارجي.");
+      return;
+    }
+
+    setIsUploadingFile(true);
+    let finalUrl = newPdfUrl.trim() || "#";
+    let finalSize = "External Link";
+
+    try {
+      if (selectedFile) {
+        finalSize = formatFileSize(selectedFile.size);
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${contentStage}/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('materials')
+          .upload(filePath, selectedFile);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('materials')
+          .getPublicUrl(filePath);
+
+        finalUrl = publicUrlData.publicUrl;
+      }
+
+      const newMat: LectureMaterial = {
+        id: `mat-${Date.now()}`,
+        name: newPdfName.trim(),
+        url: finalUrl,
+        size: finalSize,
+      };
+
+      setEditingLecture({
+        ...editingLecture,
+        materials: [...editingLecture.materials, newMat],
+      });
+
+      setNewPdfName("");
+      setNewPdfUrl("");
+      setSelectedFile(null);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert(`فشل رفع الملف: ${error.message}`);
+    } finally {
+      setIsUploadingFile(false);
+    }
   };
 
   const handleDeleteMaterial = (matId: string) => {
@@ -1117,10 +1171,10 @@ export default function AdminPage() {
                                   isPublished: e.target.value === "true",
                                 })
                               }
-                              className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 text-xs font-bold text-slate-900 dark:text-slate-200 outline-none focus:border-purple-500"
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 text-xs font-bold text-slate-900 dark:text-slate-200 outline-none focus:border-purple-500"
                             >
-                              <option value="true">منشور ومتاح للطلاب (Published)</option>
-                              <option value="false">مسودة خاصة غير ظاهرة (Unpublished Draft)</option>
+                              <option className="dark:bg-slate-900" value="true">منشور ومتاح للطلاب (Published)</option>
+                              <option className="dark:bg-slate-900" value="false">مسودة خاصة غير ظاهرة (Unpublished Draft)</option>
                             </select>
                           </div>
                         </div>
@@ -1244,7 +1298,15 @@ export default function AdminPage() {
                               />
                             </div>
                             <div className="flex-1 min-w-[200px]">
-                              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">رابط أو ملف الـ PDF</label>
+                              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">رفع الملف من الجهاز</label>
+                              <input
+                                type="file"
+                                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                                className="block w-full text-xs text-slate-600 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500/10 file:text-amber-600 hover:file:bg-amber-500/20"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-[200px]">
+                              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">أو رابط خارجي للملف</label>
                               <Input
                                 type="text"
                                 value={newPdfUrl}
@@ -1252,13 +1314,15 @@ export default function AdminPage() {
                                 placeholder="رابط التحميل أو اتركه فارغاً..."
                                 className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-xs h-9 font-mono"
                                 dir="ltr"
+                                disabled={!!selectedFile}
                               />
                             </div>
                             <Button
                               type="submit"
+                              disabled={isUploadingFile}
                               className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs h-9 px-4 rounded-xl flex items-center gap-1.5"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              {isUploadingFile ? <span className="animate-spin text-lg">↻</span> : <Plus className="w-3.5 h-3.5" />}
                               <span>إرفاق الملف</span>
                             </Button>
                           </form>
