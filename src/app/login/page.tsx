@@ -408,7 +408,7 @@ export default function AuthPage() {
             SENIOR PLATFORM
           </CardTitle>
           <CardDescription className={`text-sm font-bold ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            {isLogin ? "تسجيل الدخول إلى حساب الطالب" : "إنشاء حساب طالب جديد"}
+            {isLogin ? t.login.signInBtn : t.login.createAccountBtn}
           </CardDescription>
           {!isSupabaseConfigured() && (
             <div className={`border text-xs p-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 ${darkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
@@ -436,7 +436,7 @@ export default function AuthPage() {
             <div className="space-y-1.5">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <Phone className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>رقم هاتف الطالب</span>
+                <span>{t.login.studentPhoneLabel}</span>
               </label>
               <Input
                 type="text"
@@ -459,12 +459,12 @@ export default function AuthPage() {
             <div className="space-y-1.5">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <Lock className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>كلمة المرور</span>
+                <span>{t.login.passwordLabel}</span>
               </label>
               <div className="relative">
                 <Input
                   type={showLoginPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   {...loginForm.register("loginPassword")}
                   className={
                     darkMode
@@ -496,7 +496,7 @@ export default function AuthPage() {
                 className={`text-xs font-medium flex items-center gap-1 transition-colors ${darkMode ? 'text-slate-400 hover:text-amber-400' : 'text-slate-600 hover:text-indigo-600'}`}
               >
                 <HelpCircle className="w-3.5 h-3.5" />
-                <span>نسيت كلمة المرور؟ التواصل عبر واتساب</span>
+                <span>{t.login.forgotPassword}</span>
               </button>
             </div>
 
@@ -505,7 +505,7 @@ export default function AuthPage() {
               disabled={loginForm.formState.isSubmitting}
               className="w-full font-black py-6 rounded-xl text-xs bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 hover:from-amber-600 hover:to-yellow-600 shadow-md flex items-center justify-center gap-2"
             >
-              <span>{loginForm.formState.isSubmitting ? "جاري التحقق..." : "تسجيل الدخول"}</span>
+              <span>{loginForm.formState.isSubmitting ? t.login.loggingIn : t.login.signInBtn}</span>
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </form>
@@ -514,11 +514,11 @@ export default function AuthPage() {
             <div className="space-y-1">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <User className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>الاسم الكامل</span>
+                <span>{t.login.nameLabel}</span>
               </label>
               <Input
                 type="text"
-                placeholder="الاسم رباعي"
+                placeholder={t.login.namePlaceholder}
                 {...registerForm.register("fullName")}
                 className={
                   darkMode
@@ -536,7 +536,7 @@ export default function AuthPage() {
             <div className="space-y-1">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <Phone className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>رقم هاتف الطالب</span>
+                <span>{t.login.studentPhoneLabel}</span>
               </label>
               <Input
                 type="tel"
@@ -559,7 +559,7 @@ export default function AuthPage() {
             <div className="space-y-1">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <Phone className={`w-3.5 h-3.5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                <span>رقم هاتف ولي الأمر</span>
+                <span>{t.login.parentPhoneLabel}</span>
               </label>
               <Input
                 type="tel"
@@ -582,7 +582,7 @@ export default function AuthPage() {
             <div className="space-y-1">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <GraduationCap className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>الصف الدراسي</span>
+                <span>{t.login.stageLabel}</span>
               </label>
               <select
                 {...registerForm.register("selectedStage")}
@@ -592,12 +592,12 @@ export default function AuthPage() {
                     : "w-full bg-slate-100 border border-slate-300 rounded-xl px-3 h-10 text-xs focus:border-indigo-500 outline-none text-slate-800 font-bold"
                 }
               >
-                <option value="">-- اختر مرحلتك الدراسية --</option>
-                <option value="prep3">الصف الثالث الإعدادي (Prep 3)</option>
-                <option value="sec1">الصف الأول الثانوي (Sec 1)</option>
-                <option value="sec2">الصف الثاني الثانوي (Sec 2)</option>
-                <option value="sec3">الصف الثالث الثانوي (Sec 3)</option>
-                <option value="bac">مرحلة البكالوريا (Baccalaureate)</option>
+                <option value="">{t.login.selectStagePlaceholder}</option>
+                <option value="prep3">{t.common.stages.prep3}</option>
+                <option value="sec1">{t.common.stages.sec1}</option>
+                <option value="sec2">{t.common.stages.sec2}</option>
+                <option value="sec3">{t.common.stages.sec3}</option>
+                <option value="bac">{t.common.stages.bac}</option>
               </select>
               {registerForm.formState.errors.selectedStage && (
                 <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
@@ -609,12 +609,12 @@ export default function AuthPage() {
             <div className="space-y-1">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
                 <Lock className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>كلمة المرور</span>
+                <span>{t.login.passwordLabel}</span>
               </label>
               <div className="relative">
                 <Input
                   type={showRegisterPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   {...registerForm.register("registerPassword")}
                   className={
                     darkMode
