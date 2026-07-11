@@ -131,7 +131,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => navigate("/login")}
-                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-300 ${
                   darkMode
                     ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30"
                     : "bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/15 hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-px"
@@ -148,7 +148,7 @@ export default function LandingPage() {
                 }`}
               >
                 <Globe className="w-4 h-4 inline-block" />
-                <span className="mr-1 ml-1">{t.common.langBtn}</span>
+                <span className="mr-1 ml-1 hidden sm:inline">{t.common.langBtn}</span>
               </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
@@ -363,7 +363,7 @@ export default function LandingPage() {
 
               {/* Teacher floating glass card */}
               <motion.div
-                className="absolute -bottom-10 -left-10 sm:-bottom-20 sm:-left-20 z-20"
+                className="absolute -bottom-6 -left-2 sm:-bottom-20 sm:-left-20 z-20"
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
@@ -375,7 +375,7 @@ export default function LandingPage() {
                     : "bg-white/80 backdrop-blur-xl shadow-[0_2px_8px_rgba(15,23,42,0.08),0_8px_24px_rgba(15,23,42,0.06)]"
                 }`}>
                   <div className={`absolute -inset-3 rounded-full blur-2xl animate-glow-pulse ${darkMode ? "bg-gradient-to-tr from-amber-500/40 to-purple-500/40" : "bg-gradient-to-tr from-amber-400/20 to-purple-400/20"}`} />
-                  <div className={`relative w-40 h-40 sm:w-64 sm:h-64 rounded-full overflow-hidden border-[6px] shadow-2xl ${darkMode ? "border-amber-400/60" : "border-amber-400/40"}`}>
+                  <div className={`relative w-36 h-36 sm:w-64 sm:h-64 rounded-full overflow-hidden border-[6px] shadow-2xl ${darkMode ? "border-amber-400/60" : "border-amber-400/40"}`}>
                     <img
                       src="/teacher-ali.png"
                       alt={l.teacherName}
