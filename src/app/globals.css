@@ -1,26 +1,241 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), var(--font-cairo), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #020617;
+  --foreground: #f1f5f9;
+}
+
+/* ── Smooth Scrolling ── */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Custom Scrollbar — Dark (default)
+   ═══════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ── Custom Scrollbar — Light ── */
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Grid Pattern Overlay — Dark (default)
+   ═══════════════════════════════════════════════════════ */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* ── Grid Pattern — Light ── */
+html:not(.dark) .bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Gradient Mesh Animation
+   ═══════════════════════════════════════════════════════ */
+@keyframes gradient-shift {
+  0%, 100% { transform: translate(0%, 0%) rotate(0deg) scale(1); }
+  25% { transform: translate(5%, 10%) rotate(2deg) scale(1.05); }
+  50% { transform: translate(-5%, 5%) rotate(-1deg) scale(1.02); }
+  75% { transform: translate(3%, -5%) rotate(1deg) scale(0.98); }
+}
+
+@keyframes gradient-shift-alt {
+  0%, 100% { transform: translate(0%, 0%) rotate(0deg) scale(1); }
+  25% { transform: translate(-8%, 5%) rotate(-2deg) scale(1.03); }
+  50% { transform: translate(5%, -8%) rotate(1deg) scale(1.06); }
+  75% { transform: translate(-3%, 3%) rotate(-1deg) scale(0.97); }
+}
+
+.animate-gradient-shift {
+  animation: gradient-shift 20s ease-in-out infinite;
+}
+
+.animate-gradient-shift-alt {
+  animation: gradient-shift-alt 25s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Floating Animations
+   ═══════════════════════════════════════════════════════ */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ── Gentle float for light mode mockups ── */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 8s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Glow Pulse
+   ═══════════════════════════════════════════════════════ */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Glass Morphism — Dark (default)
+   ═══════════════════════════════════════════════════════ */
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
+}
+
+/* ── Glass Card — Light (premium) ── */
+html:not(.dark) .glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.06),
+    0 12px 48px rgba(15, 23, 42, 0.04);
+}
+
+html:not(.dark) .glass-card:hover {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 8px 24px rgba(15, 23, 42, 0.08),
+    0 20px 60px rgba(15, 23, 42, 0.06);
+  transform: translateY(-6px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Glow on Hover — Dark (default)
+   ═══════════════════════════════════════════════════════ */
+.glow-hover {
+  position: relative;
+}
+.glow-hover::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(168, 85, 247, 0.15));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+  filter: blur(8px);
+}
+.glow-hover:hover::before {
+  opacity: 1;
+}
+
+/* ── Glow on Hover — Light (softer halo) ── */
+html:not(.dark) .glow-hover::before {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(168, 85, 247, 0.08));
+  filter: blur(12px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Premium Utility — Light Shadow
+   ═══════════════════════════════════════════════════════ */
+.light-premium-shadow {
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.03),
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    0 16px 48px rgba(15, 23, 42, 0.03);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Selection — Dark (default)
+   ═══════════════════════════════════════════════════════ */
+::selection {
+  background: rgba(168, 85, 247, 0.3);
+  color: #fff;
+}
+
+/* ── Selection — Light (softer purple) ── */
+html:not(.dark) ::selection {
+  background: rgba(168, 85, 247, 0.15);
+  color: #1e293b;
 }
