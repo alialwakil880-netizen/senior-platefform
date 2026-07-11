@@ -29,7 +29,6 @@ import { useLanguage } from "@/lib/i18n";
 // مخطط التحقق لحساب جديد (Zod Schema)
 const registerSchema = z.object({
   fullName: z.string().min(3, { message: "يرجى إدخال اسم الطالب كاملاً (3 أحرف على الأقل)" }),
-  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
   studentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
   parentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
   selectedStage: z.string().min(1, { message: "يرجى اختيار الصف الدراسي" }),
@@ -87,7 +86,6 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
-      email: "",
       studentPhone: "",
       parentPhone: "",
       selectedStage: "",
@@ -176,12 +174,12 @@ export default function AuthPage() {
 
     // 2. الاتصال بـ Supabase مع حماية المهلة الزمنية
     try {
-      // Check if phone or email already exists
+      // Check if phone already exists
       const { data: existingStudent, error: checkError } = await withTimeout(
         supabase
           .from("students")
-          .select("studentPhone, email")
-          .or(`studentPhone.eq.${data.studentPhone},email.eq.${data.email}`)
+          .select("studentPhone")
+          .eq("studentPhone", data.studentPhone)
           .maybeSingle(),
         4500
       );
@@ -191,24 +189,16 @@ export default function AuthPage() {
       }
 
       if (existingStudent) {
-        if (existingStudent.studentPhone === data.studentPhone) {
-          setMessage({
-            type: "error",
-            text: "رقم هاتف الطالب مسجل مسبقاً. يرجى تسجيل الدخول مباشرة.",
-          });
-        } else {
-          setMessage({
-            type: "error",
-            text: "البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول أو استخدام بريد آخر.",
-          });
-        }
+        setMessage({
+          type: "error",
+          text: "رقم هاتف الطالب مسجل مسبقاً. يرجى تسجيل الدخول مباشرة.",
+        });
         return;
       }
 
-      // Instead of inserting into DB right away, we sign up via Supabase Auth
-      // This sends an OTP to their email
+      // Sign up via Supabase Auth using phone number
       const { error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
+        phone: `+2${data.studentPhone}`,
         password: data.registerPassword,
         options: {
           data: {
@@ -225,7 +215,7 @@ export default function AuthPage() {
       setIsOtpStep(true);
       setMessage({
         type: "success",
-        text: "تم إرسال كود التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني. يرجى إدخاله هنا.",
+        text: "تم إرسال كود التفعيل في رسالة قصيرة (SMS) إلى رقم هاتفك. يرجى إدخاله هنا.",
       });
 
     } catch (error: any) {
@@ -249,16 +239,15 @@ export default function AuthPage() {
 
     try {
       const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: tempRegData.email,
+        phone: `+2${tempRegData.studentPhone}`,
         token: otpCode,
-        type: 'signup'
+        type: 'sms'
       });
 
       if (verifyError) throw verifyError;
 
       const newStudentData = {
         fullName: tempRegData.fullName,
-        email: tempRegData.email,
         studentPhone: tempRegData.studentPhone,
         parentPhone: tempRegData.parentPhone,
         stageId: tempRegData.selectedStage,
@@ -621,29 +610,6 @@ export default function AuthPage() {
               {registerForm.formState.errors.fullName && (
                 <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
                   {registerForm.formState.errors.fullName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
-                <Globe className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>البريد الإلكتروني</span>
-              </label>
-              <Input
-                type="email"
-                placeholder="example@gmail.com"
-                {...registerForm.register("email")}
-                className={
-                  darkMode
-                    ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-10 text-xs focus-visible:ring-amber-500 text-left"
-                    : "w-full bg-slate-100 border-slate-300 rounded-xl px-4 h-10 text-xs focus-visible:ring-indigo-500 text-left text-slate-900"
-                }
-                dir="ltr"
-              />
-              {registerForm.formState.errors.email && (
-                <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  {registerForm.formState.errors.email.message}
                 </p>
               )}
             </div>
