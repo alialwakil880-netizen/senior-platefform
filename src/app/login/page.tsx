@@ -216,27 +216,30 @@ export default function AuthPage() {
         return;
       }
 
-      // Sign up via Supabase Auth using email
-      const { error: signUpError } = await supabase.auth.signUp({
+      // Directly insert into the `students` table without OTP validation
+      const newStudentData = {
+        fullName: data.fullName,
         email: data.email,
+        studentPhone: data.studentPhone,
+        parentPhone: data.parentPhone,
+        stageId: data.selectedStage,
         password: data.registerPassword,
-        options: {
-          data: {
-            fullName: data.fullName,
-            stageId: data.selectedStage,
-          },
-        },
-      });
+        createdAt: new Date().toISOString(),
+      };
 
-      if (signUpError) throw signUpError;
+      const { error: insertError } = await supabase.from("students").insert([newStudentData]);
+      if (insertError) throw insertError;
 
-      // Save temp data and show OTP step
-      setTempRegData(data);
-      setIsOtpStep(true);
       setMessage({
         type: "success",
-        text: "تم إرسال كود التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني. يرجى مراجعته.",
+        text: "تم إنشاء حسابك بنجاح! جاري التوجيه إلى المنصة...",
       });
+
+      // Auto login
+      localStorage.setItem("current_student", JSON.stringify(newStudentData));
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
 
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -247,88 +250,7 @@ export default function AuthPage() {
     }
   };
 
-  // إعادة إرسال الكود
-  const handleResendOtp = async () => {
-    if (!tempRegData || resendTimer > 0) return;
-    setMessage({ type: "", text: "" });
 
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: tempRegData.email
-      });
-
-      if (error) throw error;
-
-      setResendTimer(60);
-      setMessage({
-        type: "success",
-        text: "تم إعادة إرسال الكود بنجاح. يرجى مراجعة بريدك الإلكتروني.",
-      });
-    } catch (error: any) {
-      console.error("Resend OTP error:", error);
-      setMessage({
-        type: "error",
-        text: "حدث خطأ أثناء إعادة إرسال الكود. يرجى المحاولة لاحقاً.",
-      });
-    }
-  };
-
-  // تأكيد كود OTP
-  const handleVerifyOtp = async () => {
-    setMessage({ type: "", text: "" });
-    if (!tempRegData) return;
-    
-    if (otpCode.length !== 6) {
-      setMessage({ type: "error", text: "يرجى كتابة الكود المكون من 6 أرقام بشكل صحيح." });
-      return;
-    }
-
-    try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: tempRegData.email,
-        token: otpCode,
-        type: 'signup'
-      });
-
-      if (verifyError) throw verifyError;
-
-      const newStudentData = {
-        fullName: tempRegData.fullName,
-        email: tempRegData.email,
-        studentPhone: tempRegData.studentPhone,
-        parentPhone: tempRegData.parentPhone,
-        stageId: tempRegData.selectedStage,
-        password: tempRegData.registerPassword,
-        createdAt: new Date().toISOString(),
-      };
-
-      const { error: insertError } = await supabase.from("students").insert([newStudentData]);
-      
-      if (insertError) {
-        // If it fails to insert (e.g. duplicate during concurrent request), we still logged them in auth but we should warn
-        throw insertError;
-      }
-
-      setMessage({
-        type: "success",
-        text: "تم تفعيل حسابك بنجاح! جاري التوجيه إلى المنصة...",
-      });
-
-      // Auto login
-      localStorage.setItem("current_student", JSON.stringify(newStudentData));
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 1500);
-
-    } catch (error: any) {
-      console.error("OTP Verification Error:", error);
-      setMessage({
-        type: "error",
-        text: "الكود غير صحيح أو منتهي الصلاحية. يرجى المحاولة مرة أخرى.",
-      });
-    }
-  };
 
   // تسجيل دخول
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -519,60 +441,7 @@ export default function AuthPage() {
           </div>
         )}
 
-        {isOtpStep ? (
-          <div className="space-y-4">
-            <div className="space-y-1.5 text-center mb-6">
-              <label className={`text-sm font-bold ${darkMode ? 'text-amber-400' : 'text-indigo-600'} block`}>
-                أدخل كود التفعيل
-              </label>
-              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                تم إرسال كود مكون من 6 أرقام إلى بريدك الإلكتروني
-              </p>
-            </div>
-            
-            <Input
-              type="text"
-              placeholder="123456"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value)}
-              className={
-                darkMode
-                  ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-14 text-center text-2xl font-mono tracking-[0.5em] focus-visible:ring-amber-500"
-                  : "w-full bg-slate-100 border-slate-300 rounded-xl px-4 h-14 text-center text-2xl font-mono tracking-[0.5em] focus-visible:ring-indigo-500 text-slate-900"
-              }
-              dir="ltr"
-            />
-            
-            <Button
-              onClick={handleVerifyOtp}
-              disabled={otpCode.length !== 6}
-              className="w-full font-black py-6 rounded-xl text-xs bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-md flex items-center justify-center gap-2 mt-4"
-            >
-              <span>تأكيد الحساب</span>
-              <CheckCircle2 className="w-4 h-4" />
-            </Button>
-
-            <button
-              onClick={handleResendOtp}
-              disabled={resendTimer > 0}
-              className={`w-full text-xs font-bold mt-2 py-3 rounded-xl border transition-colors ${
-                resendTimer > 0
-                  ? darkMode ? 'text-slate-500 border-slate-800 bg-slate-900/50 cursor-not-allowed' : 'text-slate-400 border-slate-200 bg-slate-50 cursor-not-allowed'
-                  : darkMode ? 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10' : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'
-              }`}
-            >
-              {resendTimer > 0 ? `إعادة إرسال الكود (${resendTimer} ثانية)` : "إعادة إرسال الكود الآن"}
-            </button>
-            
-            <button
-              onClick={() => setIsOtpStep(false)}
-              className={`w-full text-xs font-medium mt-2 ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-            >
-              العودة للتسجيل
-            </button>
-          </div>
-        ) : isLogin ? (
+        {isLogin ? (
           <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
