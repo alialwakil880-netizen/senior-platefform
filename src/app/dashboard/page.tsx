@@ -628,19 +628,19 @@ export default function DashboardPage() {
                   {getStageLabel(student.stageId)}
                 </span>
                 <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-                  مرحباً بك،{" "}
+                  {t.dashboard.welcome}{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-600 to-purple-600 dark:from-amber-400 dark:via-yellow-400 dark:to-purple-400">
                     {student.fullName}
                   </span>
                 </h2>
                 <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                  استكمل رحلتك التعليمية بسهولة. قم بمشاهدة محاضرات الفيديو المحمية، الاطلاع على المذكرات، وحل الاختبارات الإلكترونية لمتابعة تقدمك المستمر.
+                  {t.dashboard.welcomeSubtitle}
                 </p>
               </div>
 
               <div className="w-full md:w-72 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 p-4.5 rounded-2xl space-y-2.5 shrink-0 shadow-inner">
                 <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span>نسبة التقدم الدراسي:</span>
+                  <span>{t.dashboard.progressTitle}</span>
                   <span className="text-amber-600 dark:text-amber-400">{progressPercentage}%</span>
                 </div>
                 <div className={`w-full h-2.5 rounded-full overflow-hidden border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-slate-200 border-slate-300"}`}>
@@ -650,7 +650,7 @@ export default function DashboardPage() {
                   ></div>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium text-center">
-                  شاهد الدروس وأجب عن الاختبارات لزيادة التقدم
+                  {t.dashboard.progressSubtitle}
                 </p>
               </div>
             </Card>
@@ -661,11 +661,11 @@ export default function DashboardPage() {
                 <Card className={darkMode ? "p-5 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-3xl" : "p-5 bg-white border border-slate-200 rounded-3xl shadow-xs"}>
                   <h3 className="text-xs font-black text-slate-700 dark:text-slate-400 mb-4 flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                    <span>محتوى المنهج الدراسي</span>
+                    <span>{t.dashboard.curriculumContent}</span>
                   </h3>
                   
                   {currentStageUnits.length === 0 ? (
-                    <p className="text-xs text-slate-600 dark:text-slate-500 font-bold text-center py-4">لا توجد محاضرات منشورة بعد.</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-500 font-bold text-center py-4">{t.dashboard.noPublishedLectures}</p>
                   ) : (
                     <div className="space-y-6">
                       {currentStageUnits.map((unit, uIdx) => {
@@ -750,7 +750,7 @@ export default function DashboardPage() {
                               : "bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-purple-500/30 hover:bg-purple-500/5 text-slate-700 dark:text-slate-300"
                           }`}
                         >
-                          <span className="text-sm md:text-base font-black">مشاهدة الشرح بالفيديو</span>
+                          <span className="text-sm md:text-base font-black">{t.dashboard.lectureTabVideo}</span>
                           <div className={`w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shrink-0`}>
                             <Play className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400 fill-purple-600 dark:fill-purple-400" />
                           </div>
@@ -770,7 +770,7 @@ export default function DashboardPage() {
                                 />
                               ) : (
                                 <div className="p-8 text-center text-xs text-slate-600 dark:text-slate-400 font-bold border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl">
-                                  لم يتم إضافة فيديو لهذه المحاضرة بعد.
+                                  {t.dashboard.noVideoAdded}
                                 </div>
                               );
                             })()}
@@ -788,7 +788,7 @@ export default function DashboardPage() {
                               : "bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-amber-500/30 hover:bg-amber-500/5 text-slate-700 dark:text-slate-300"
                           }`}
                         >
-                          <span className="text-sm md:text-base font-black">ملف المحاضرة PDF</span>
+                          <span className="text-sm md:text-base font-black">{t.dashboard.lectureTabMaterials}</span>
                           <div className={`w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0`}>
                             <FileText className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
                           </div>
@@ -798,12 +798,12 @@ export default function DashboardPage() {
                           <div className="p-5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl animate-in slide-in-from-top-4 duration-300 space-y-4">
                             <h6 className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                               <FileText className="w-4 h-4" />
-                              <span>المستندات وأوراق العمل المرفقة للتحميل:</span>
+                              <span>{t.dashboard.materialsHeader}</span>
                             </h6>
 
                             {activeLecture.materials.length === 0 ? (
                               <div className="text-xs text-slate-600 dark:text-slate-400 text-center py-6 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl font-bold">
-                                لا توجد مذكرات أو أوراق عمل مرفقة حالياً.
+                                {t.dashboard.noMaterialsAdded}
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -820,7 +820,7 @@ export default function DashboardPage() {
                                         <h6 className="text-xs font-bold text-slate-900 dark:text-slate-200 truncate max-w-[150px]">
                                           {mat.name}
                                         </h6>
-                                        <span className="text-[10px] text-slate-600 dark:text-slate-500">حجم الملف: {mat.size || "PDF"}</span>
+                                        <span className="text-[10px] text-slate-600 dark:text-slate-500">{t.dashboard.fileSize}: {mat.size || "PDF"}</span>
                                       </div>
                                     </div>
                                     <a
@@ -836,7 +836,7 @@ export default function DashboardPage() {
                                       className="px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 text-xs font-bold border border-blue-500/30 transition-all shrink-0 flex items-center gap-1"
                                     >
                                       <Download className="w-3.5 h-3.5" />
-                                      <span>تحميل</span>
+                                      <span>{t.dashboard.download}</span>
                                     </a>
                                   </div>
                                 ))}
@@ -856,7 +856,7 @@ export default function DashboardPage() {
                               : "bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-slate-700 dark:text-slate-300"
                           }`}
                         >
-                          <span className="text-sm md:text-base font-black">الاختبار التفاعلي</span>
+                          <span className="text-sm md:text-base font-black">{t.dashboard.lectureTabQuiz}</span>
                           <div className={`w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0`}>
                             <HelpCircle className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
                           </div>
@@ -871,19 +871,19 @@ export default function DashboardPage() {
                                   <div className="flex justify-between items-center flex-wrap gap-2">
                                     <h6 className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                                       <HelpCircle className="w-4 h-4" />
-                                      <span>{activeLecture.quiz?.title || `اختبار ${activeLecture.title}`} ({activeLecture.quiz?.questions?.length || 0} أسئلة)</span>
+                                      <span>{activeLecture.quiz?.title || `${t.dashboard.quizTitlePrefix} ${activeLecture.title}`} ({activeLecture.quiz?.questions?.length || 0} {t.dashboard.questionsText})</span>
                                     </h6>
                                     {quizResult && (
                                       <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 flex items-center gap-1.5">
                                         <Award className="w-4 h-4" />
-                                        <span>الدرجة السابقة: {quizResult.score} / {quizResult.total} نقطة</span>
+                                        <span>{t.dashboard.prevScore}: {quizResult.score} / {quizResult.total} {t.dashboard.points}</span>
                                       </span>
                                     )}
                                   </div>
 
                                   {(!activeLecture.quiz?.questions || activeLecture.quiz.questions.length === 0) ? (
                                     <div className="text-xs text-slate-600 dark:text-slate-400 text-center py-6 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl font-bold">
-                                      لم يتم إضافة أسئلة لهذا الاختبار بعد.
+                                      {t.dashboard.noQuestions}
                                     </div>
                                   ) : (
                                     <div className="space-y-4">
@@ -900,7 +900,7 @@ export default function DashboardPage() {
                                               <span>
                                                 {qIdx + 1}. {q.questionText}
                                               </span>
-                                              <span className="text-amber-600 dark:text-amber-400 shrink-0 font-bold">({q.points} نقطة)</span>
+                                              <span className="text-amber-600 dark:text-amber-400 shrink-0 font-bold">({q.points} {t.dashboard.points})</span>
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -931,8 +931,8 @@ export default function DashboardPage() {
                                                       <b>{["A", "B", "C", "D"][cIdx]}.</b> {choice}
                                                     </span>
                                                     {isSelected && !quizResult && <CheckCircle2 className="w-3.5 h-3.5" />}
-                                                    {quizResult && cIdx === q.correctChoiceIndex && <span className="text-[11px] text-emerald-400 font-bold">إجابة صحيحة</span>}
-                                                    {quizResult && isSelected && !isCorrect && <span className="text-[11px] text-red-400 font-bold">خاطئة</span>}
+                                                    {quizResult && cIdx === q.correctChoiceIndex && <span className="text-[11px] text-emerald-400 font-bold">{t.dashboard.correctAnswer}</span>}
+                                                    {quizResult && isSelected && !isCorrect && <span className="text-[11px] text-red-400 font-bold">{t.dashboard.wrongAnswer}</span>}
                                                   </button>
                                                 );
                                               })}
@@ -947,7 +947,7 @@ export default function DashboardPage() {
                                           className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black px-6 py-5 rounded-xl text-xs shadow-md flex items-center gap-2"
                                         >
                                           <Send className="w-4 h-4" />
-                                          <span>تسليم الإجابات وحساب النتيجة</span>
+                                          <span>{t.dashboard.submitQuizBtn}</span>
                                         </Button>
                                       </div>
                                     </div>
