@@ -730,7 +730,7 @@ export default function AdminPage() {
                 type="text"
                 value={adminLoginPhone}
                 onChange={(e) => setAdminLoginPhone(e.target.value)}
-                placeholder="رقم الهاتف الأساسي، اسم المستخدم، أو الإيميل"
+                placeholder={t.admin.phonePlaceholder}
                 className="rounded-xl text-right bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-amber-500 h-11 text-xs text-slate-900 dark:text-slate-100"
                 dir="ltr"
               />
@@ -742,7 +742,7 @@ export default function AdminPage() {
                   type={showAdminPassword ? "text" : "password"}
                   value={adminLoginPassword}
                   onChange={(e) => setAdminLoginPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t.admin.passwordPlaceholder}
                   className="rounded-xl text-right bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-amber-500 h-11 text-xs px-10"
                   dir="ltr"
                 />
@@ -750,7 +750,7 @@ export default function AdminPage() {
                   type="button"
                   onClick={() => setShowAdminPassword(!showAdminPassword)}
                   className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                  aria-label={showAdminPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                  aria-label={showAdminPassword ? t.admin.hidePassword : t.admin.showPassword}
                 >
                   {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -855,7 +855,7 @@ export default function AdminPage() {
         {!isSupabaseConfigured() && (
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs p-3.5 rounded-2xl font-bold flex items-center gap-2">
             <Sparkles className="w-4 h-4 shrink-0" />
-            <span>تنبيه: تعمل الآن بالوضع المحلي الفوري (0 ثانية تحميل) مع مزامنة فورية وكاملة للمناهج في لوحة الطالب.</span>
+            <span>{t.admin.localModeAlert}</span>
           </div>
         )}
 
@@ -897,7 +897,7 @@ export default function AdminPage() {
             }`}
           >
             <KeyRound className="w-4 h-4" />
-            <span>إعدادات الحساب</span>
+            <span>{t.admin.accountSettings}</span>
           </button>
         </div>
 
@@ -906,7 +906,7 @@ export default function AdminPage() {
             <Card className="p-5 glass-card rounded-3xl flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span className="text-xs font-black text-slate-700 dark:text-slate-200">اختر المرحلة التعليمية لإدارة المنهج:</span>
+                <span className="text-xs font-black text-slate-700 dark:text-slate-200">{t.admin.selectStage}</span>
                 <select
                   value={contentStage}
                   onChange={(e) => setContentStage(e.target.value)}
@@ -930,7 +930,7 @@ export default function AdminPage() {
                   className="bg-purple-600 hover:bg-purple-700 text-white font-black px-5 py-2 rounded-xl text-xs shadow-md flex items-center gap-2"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>إضافة وحدة جديدة</span>
+                  <span>{t.admin.addUnit}</span>
                 </Button>
               </div>
             </Card>
@@ -940,20 +940,20 @@ export default function AdminPage() {
                 <div className="text-xs font-black text-slate-600 dark:text-slate-400 flex justify-between items-center">
                   <span className="flex items-center gap-1.5">
                     <FolderOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>وحدات المنهج ({getStageLabel(contentStage)}):</span>
+                    <span>{t.admin.curriculumUnits.replace('{stage}', getStageLabel(contentStage))}</span>
                   </span>
                   <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border ${
                     darkMode
                       ? "bg-slate-900 text-amber-400 border-slate-800"
                       : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                   }`}>
-                    {(curriculum[contentStage] || []).length} وحدات
+                    {(curriculum[contentStage] || []).length} {t.admin.unitsCount}
                   </span>
                 </div>
 
                 {(curriculum[contentStage] || []).length === 0 ? (
                   <Card className="p-8 glass-card text-center text-xs text-slate-600 dark:text-slate-400 font-bold rounded-3xl">
-                    لا توجد وحدات تعليمية بعد في هذه المرحلة. اضغط على "إضافة وحدة جديدة" للبدء.
+                    {t.admin.noUnits}
                   </Card>
                 ) : (
                   (curriculum[contentStage] || []).map((unit, idx) => {
@@ -989,9 +989,9 @@ export default function AdminPage() {
                               </p>
                             )}
                             <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-2 font-bold flex gap-3">
-                              <span>{unit.lectures.length} محاضرة</span>
+                              <span>{unit.lectures.length} {t.admin.lectureCountStr}</span>
                               <span>
-                                {unit.lectures.reduce((acc, l) => acc + l.materials.length, 0)} ملف PDF
+                                {unit.lectures.reduce((acc, l) => acc + l.materials.length, 0)} {t.admin.pdfFileStr}
                               </span>
                             </div>
                           </div>
@@ -999,28 +999,28 @@ export default function AdminPage() {
                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => handleRenameUnit(unit)}
-                              title="إعادة تسمية الوحدة"
+                              title={t.admin.renameUnit}
                               className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors border border-slate-200/50 dark:border-slate-800/50"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleMoveUnitOrder(unit.id, "up")}
-                              title="نقل لأعلى"
+                              title={t.admin.moveUp}
                               className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors border border-slate-200/50 dark:border-slate-800/50"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleMoveUnitOrder(unit.id, "down")}
-                              title="نقل لأسفل"
+                              title={t.admin.moveDown}
                               className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors border border-slate-200/50 dark:border-slate-800/50"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteUnit(unit.id, unit.title)}
-                              title="حذف الوحدة"
+                              title={t.admin.deleteUnit}
                               className="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs flex items-center justify-center text-red-500 dark:text-red-400 transition-colors border border-red-500/20"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1038,7 +1038,7 @@ export default function AdminPage() {
                   <div className="space-y-6">
                     <Card className="p-5 glass-card rounded-3xl flex justify-between items-center gap-4 flex-wrap shadow-xs">
                       <div>
-                        <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 block mb-0.5">الوحدة المحددة:</span>
+                        <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 block mb-0.5">{t.admin.selectedUnit}</span>
                         <h3 className="text-lg font-black text-amber-600 dark:text-amber-400">{activeUnit.title}</h3>
                         {activeUnit.description && (
                           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{activeUnit.description}</p>
@@ -1049,19 +1049,19 @@ export default function AdminPage() {
                         className="bg-purple-600 hover:bg-purple-700 text-white font-black px-4.5 py-2.5 rounded-xl text-xs shadow-md flex items-center gap-1.5"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>إضافة محاضرة جديدة</span>
+                        <span>{t.admin.addLecture}</span>
                       </Button>
                     </Card>
 
                     <div className="space-y-3">
                       <h4 className="text-xs font-black text-slate-600 dark:text-slate-400 flex items-center gap-2">
                         <Video className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        <span>محاضرات ودروس الوحدة ({activeUnit.lectures.length} محاضرة):</span>
+                        <span>{t.admin.unitLectures} ({activeUnit.lectures.length} {t.admin.lectureCountStr}):</span>
                       </h4>
 
                       {activeUnit.lectures.length === 0 ? (
                         <Card className="p-8 glass-card text-center text-xs text-slate-600 dark:text-slate-400 font-bold rounded-3xl">
-                          لا توجد محاضرات في هذه الوحدة بعد. اضغط على "إضافة محاضرة جديدة" لإدراج أول درس.
+                          {t.admin.noLectures}
                         </Card>
                       ) : (
                         activeUnit.lectures.map((lec, lIdx) => {
@@ -1089,21 +1089,21 @@ export default function AdminPage() {
                                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                       }`}
                                     >
-                                      {lec.isPublished ? "منشور للطلاب" : "مسودة خاصة"}
+                                      {lec.isPublished ? t.admin.published : t.admin.draft}
                                     </span>
                                   </div>
                                   <div className="text-[11px] text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-5 font-medium">
                                     <span className="flex items-center gap-1">
                                       <Video className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                                      <span>فيديو: {lec.videoId || lec.youtubeUrl ? "موجود (Unlisted)" : "غير مضاف"}</span>
+                                      <span>{t.admin.video} {lec.videoId || lec.youtubeUrl ? t.admin.videoPresent : t.admin.notAdded}</span>
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                      <span>ملفات PDF: {lec.materials.length > 0 ? `(${lec.materials.length} ملفات)` : "لا يوجد"}</span>
+                                      <span>{t.admin.pdfFiles} {lec.materials.length > 0 ? `(${lec.materials.length} ${t.admin.files})` : t.admin.none}</span>
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <HelpCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                                      <span>اختبار MCQ: {lec.quiz?.questions && lec.quiz.questions.length > 0 ? `(${lec.quiz.questions.length} أسئلة)` : "غير مضاف"}</span>
+                                      <span>{t.admin.mcqQuiz} {lec.quiz?.questions && lec.quiz.questions.length > 0 ? `(${lec.quiz.questions.length} ${t.admin.questions})` : t.admin.notAdded}</span>
                                     </span>
                                   </div>
                                 </div>
@@ -1115,32 +1115,32 @@ export default function AdminPage() {
                                     className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-1.5 text-[11px] font-bold text-slate-300 outline-none max-w-[150px]"
                                   >
                                     <option value={activeUnit.id} disabled>
-                                      نقل إلى وحدة أخرى...
+                                      {t.admin.moveToUnit}
                                     </option>
                                     {(curriculum[contentStage] || []).map((u) => (
                                       <option key={u.id} value={u.id}>
-                                        إلى: {u.title}
+                                        {t.admin.toUnit} {u.title}
                                       </option>
                                     ))}
                                   </select>
 
                                   <button
                                     onClick={() => handleMoveLectureOrder(lec.id, "up")}
-                                    title="ترتيب لأعلى"
+                                    title={t.admin.moveUpOrder}
                                     className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                   >
                                     <ArrowUp className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleMoveLectureOrder(lec.id, "down")}
-                                    title="ترتيب لأسفل"
+                                    title={t.admin.moveDownOrder}
                                     className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                   >
                                     <ArrowDown className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteLecture(lec.id, lec.title)}
-                                    title="حذف المحاضرة"
+                                    title={t.admin.deleteLecture}
                                     className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-xs transition-colors"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1151,7 +1151,7 @@ export default function AdminPage() {
                                     className="bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5"
                                   >
                                     <Edit3 className="w-3.5 h-3.5" />
-                                    <span>{isEditingThis ? "إغلاق المحرر" : "إدارة وتحرير المحتوى"}</span>
+                                    <span>{isEditingThis ? t.admin.closeEditor : t.admin.manageContent}</span>
                                   </Button>
                                 </div>
                               </div>
@@ -1173,7 +1173,7 @@ export default function AdminPage() {
                           <div className="space-y-0.5">
                             <span className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                               <Edit3 className="w-4 h-4" />
-                              <span>محرر محتوى المحاضرة</span>
+                              <span>{t.admin.lectureEditor}</span>
                             </span>
                             <h4 className="text-lg font-black text-slate-900 dark:text-slate-100">{editingLecture.title}</h4>
                           </div>
@@ -1186,13 +1186,13 @@ export default function AdminPage() {
                             }`}
                           >
                             <X className="w-3.5 h-3.5" />
-                            <span>إغلاق</span>
+                            <span>{t.admin.close}</span>
                           </button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">عنوان الدرس</label>
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">{t.admin.lectureTitle}</label>
                             <Input
                               type="text"
                               value={editingLecture.title}
