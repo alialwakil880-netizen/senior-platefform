@@ -363,26 +363,26 @@ export default function LandingPage() {
 
               {/* Teacher floating glass card */}
               <motion.div
-                className="absolute -bottom-8 -left-8 sm:-bottom-12 sm:-left-12 z-20"
+                className="absolute -bottom-10 -left-10 sm:-bottom-20 sm:-left-20 z-20"
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.8, ease: [0.25, 0.4, 0.25, 1] }}
                 whileHover={{ scale: 1.05, y: -4 }}
               >
-                <div className={`relative p-2 rounded-full ${
+                <div className={`relative p-3 rounded-full ${
                   darkMode
                     ? ""
                     : "bg-white/80 backdrop-blur-xl shadow-[0_2px_8px_rgba(15,23,42,0.08),0_8px_24px_rgba(15,23,42,0.06)]"
                 }`}>
-                  <div className={`absolute -inset-2 rounded-full blur-xl animate-glow-pulse ${darkMode ? "bg-gradient-to-tr from-amber-500/40 to-purple-500/40" : "bg-gradient-to-tr from-amber-400/20 to-purple-400/20"}`} />
-                  <div className={`relative w-32 h-32 sm:w-44 sm:h-44 rounded-full overflow-hidden border-4 shadow-2xl ${darkMode ? "border-amber-400/60" : "border-amber-400/40"}`}>
+                  <div className={`absolute -inset-3 rounded-full blur-2xl animate-glow-pulse ${darkMode ? "bg-gradient-to-tr from-amber-500/40 to-purple-500/40" : "bg-gradient-to-tr from-amber-400/20 to-purple-400/20"}`} />
+                  <div className={`relative w-40 h-40 sm:w-64 sm:h-64 rounded-full overflow-hidden border-[6px] shadow-2xl ${darkMode ? "border-amber-400/60" : "border-amber-400/40"}`}>
                     <img
                       src="/teacher-ali.png"
                       alt={l.teacherName}
                       className="w-full h-full object-cover object-top"
                     />
                   </div>
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] sm:text-xs font-black px-4 py-1 rounded-full whitespace-nowrap shadow-lg">
+                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs sm:text-sm font-black px-5 py-1.5 rounded-full whitespace-nowrap shadow-xl">
                     {l.teacherRole}
                   </div>
                 </div>
