@@ -336,6 +336,47 @@ export default function AdminPage() {
     alert(`تم تحديث كلمة المرور بنجاح للطالب ${displayName} لتصبح: ${newPass}`);
   };
 
+  const handleDeleteStudent = async (student: StudentRecord) => {
+    const displayName = student.fullName || student.name || "الطالب";
+    const studentPhone = student.studentPhone || student.phone;
+    
+    if (!confirm(`هل أنت متأكد من رغبتك في حذف حساب الطالب (${displayName}) نهائياً؟`)) {
+      return;
+    }
+
+    if (isSupabaseConfigured() && studentPhone) {
+      try {
+        const { error } = await supabase
+          .from("students")
+          .delete()
+          .eq("studentPhone", studentPhone);
+
+        if (error && error.code !== "42P01") {
+          console.error("Error deleting student from Supabase:", error);
+          alert("حدث خطأ أثناء مسح الطالب من قاعدة البيانات.");
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to delete student:", err);
+      }
+    }
+
+    setStudents((prev) => prev.filter((s) => (s.studentPhone || s.phone) !== studentPhone));
+
+    if (!isSupabaseConfigured()) {
+      const localStudentsStr = localStorage.getItem("local_students_db") || "[]";
+      const localStudents: any[] = JSON.parse(localStudentsStr);
+      const updated = localStudents.filter((s) => s.studentPhone !== studentPhone);
+      localStorage.setItem("local_students_db", JSON.stringify(updated));
+    }
+
+    if (selectedStudentStats && (selectedStudentStats.studentPhone || selectedStudentStats.phone) === studentPhone) {
+      setSelectedStudentStats(null);
+    }
+
+    alert(`تم مسح حساب الطالب ${displayName} بنجاح.`);
+  };
+
   function getStageLabel(key: string) {
     const labels: Record<string, string> = {
       prep3: "الصف الثالث الإعدادي",
@@ -1602,11 +1643,19 @@ export default function AdminPage() {
                                 </button>
                                 <button
                                   onClick={() => handleResetPassword(student)}
-                                  className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold text-[11px] flex items-center justify-center gap-1.5"
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all font-bold text-[11px] flex items-center justify-center gap-1.5"
                                   title="تغيير كلمة المرور"
                                 >
                                   <KeyRound className="w-3.5 h-3.5 shrink-0" />
                                   <span>الباسورد</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteStudent(student)}
+                                  className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold text-[11px] flex items-center justify-center gap-1.5"
+                                  title="حذف حساب الطالب نهائياً"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>حذف</span>
                                 </button>
                               </div>
                             </td>
