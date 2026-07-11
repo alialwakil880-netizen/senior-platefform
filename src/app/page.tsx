@@ -651,33 +651,10 @@ export default function LandingPage() {
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-slate-900 dark:text-slate-200">{l.footerContact}</h4>
               <div className={`space-y-2.5 text-xs ${darkMode ? "text-slate-500" : "text-slate-600"}`}>
-                <p>senior.platform@email.com</p>
-                <p>01223698064</p>
-              </div>
-            </div>
-
-            {/* Social */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                {lang === "ar" ? "تابعنا" : "Follow Us"}
-              </h4>
-              <div className="flex gap-3">
-                {["Facebook", "YouTube", "WhatsApp"].map((social) => (
-                  <span
-                    key={social}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                      darkMode
-                        ? "bg-white/5 text-slate-500 hover:text-slate-300 hover:bg-white/10"
-                        : "bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 hover:border-slate-300"
-                    }`}
-                  >
-                    {social.charAt(0)}
-                  </span>
-                ))}
+                <p dir="ltr" className="text-right">+20 10 68705721</p>
               </div>
             </div>
           </div>
-
           {/* Copyright */}
           <div className={`mt-12 pt-6 border-t text-center ${darkMode ? "border-slate-900" : "border-slate-200/80"}`}>
             <p className={`text-[11px] ${darkMode ? "text-slate-600" : "text-slate-500"}`}>{l.footerRights}</p>
