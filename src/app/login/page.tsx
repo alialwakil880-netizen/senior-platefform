@@ -29,7 +29,6 @@ import { useLanguage } from "@/lib/i18n";
 // مخطط التحقق لحساب جديد (Zod Schema)
 const registerSchema = z.object({
   fullName: z.string().min(3, { message: "يرجى إدخال اسم الطالب كاملاً (3 أحرف على الأقل)" }),
-  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
   studentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
   parentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
   selectedStage: z.string().min(1, { message: "يرجى اختيار الصف الدراسي" }),
@@ -40,7 +39,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 // مخطط التحقق لتسجيل الدخول (Zod Schema)
 const loginSchema = z.object({
-  loginIdentifier: z.string().min(1, { message: "يرجى إدخال رقم الهاتف أو البريد الإلكتروني" }),
+  loginIdentifier: z.string().min(1, { message: "يرجى إدخال رقم الهاتف" }),
   loginPassword: z.string().min(1, { message: "يرجى إدخال كلمة المرور" }),
 });
 
@@ -88,7 +87,6 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
-      email: "",
       studentPhone: "",
       parentPhone: "",
       selectedStage: "",
@@ -187,12 +185,12 @@ export default function AuthPage() {
 
     // 2. الاتصال بـ Supabase مع حماية المهلة الزمنية
     try {
-      // Check if phone or email already exists
+      // Check if phone already exists
       const { data: existingStudent, error: checkError } = await withTimeout(
         supabase
           .from("students")
-          .select("studentPhone, email")
-          .or(`studentPhone.eq.${data.studentPhone},email.eq.${data.email}`)
+          .select("studentPhone")
+          .eq("studentPhone", data.studentPhone)
           .maybeSingle(),
         4500
       );
@@ -202,24 +200,16 @@ export default function AuthPage() {
       }
 
       if (existingStudent) {
-        if (existingStudent.studentPhone === data.studentPhone) {
-          setMessage({
-            type: "error",
-            text: "رقم هاتف الطالب مسجل مسبقاً. يرجى تسجيل الدخول مباشرة.",
-          });
-        } else {
-          setMessage({
-            type: "error",
-            text: "البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول أو استخدام بريد آخر.",
-          });
-        }
+        setMessage({
+          type: "error",
+          text: "رقم هاتف الطالب مسجل مسبقاً. يرجى تسجيل الدخول مباشرة.",
+        });
         return;
       }
 
       // Directly insert into the `students` table without OTP validation
       const newStudentData = {
         fullName: data.fullName,
-        email: data.email,
         studentPhone: data.studentPhone,
         parentPhone: data.parentPhone,
         stageId: data.selectedStage,
@@ -308,7 +298,7 @@ export default function AuthPage() {
         supabase
           .from("students")
           .select("*")
-          .or(`studentPhone.eq.${data.loginIdentifier},email.eq.${data.loginIdentifier}`)
+          .eq("studentPhone", data.loginIdentifier)
           .maybeSingle(),
         4500
       );
@@ -445,12 +435,12 @@ export default function AuthPage() {
           <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
-                <User className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>رقم الهاتف أو الإيميل</span>
+                <Phone className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
+                <span>رقم هاتف الطالب</span>
               </label>
               <Input
                 type="text"
-                placeholder="01xxxxxxxxx أو الإيميل"
+                placeholder="01xxxxxxxxx"
                 {...loginForm.register("loginIdentifier")}
                 className={
                   darkMode
@@ -539,29 +529,6 @@ export default function AuthPage() {
               {registerForm.formState.errors.fullName && (
                 <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
                   {registerForm.formState.errors.fullName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
-                <Globe className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>البريد الإلكتروني</span>
-              </label>
-              <Input
-                type="email"
-                placeholder="example@gmail.com"
-                {...registerForm.register("email")}
-                className={
-                  darkMode
-                    ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-10 text-xs focus-visible:ring-amber-500 text-left"
-                    : "w-full bg-slate-100 border-slate-300 rounded-xl px-4 h-10 text-xs focus-visible:ring-indigo-500 text-left text-slate-900"
-                }
-                dir="ltr"
-              />
-              {registerForm.formState.errors.email && (
-                <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  {registerForm.formState.errors.email.message}
                 </p>
               )}
             </div>
