@@ -29,8 +29,9 @@ import { useLanguage } from "@/lib/i18n";
 // مخطط التحقق لحساب جديد (Zod Schema)
 const registerSchema = z.object({
   fullName: z.string().min(3, { message: "يرجى إدخال اسم الطالب كاملاً (3 أحرف على الأقل)" }),
-  studentPhone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح للطالب" }).max(15, { message: "رقم الهاتف طويل جداً" }),
-  parentPhone: z.string().min(10, { message: "يرجى إدخال رقم هاتف صحيح لولي الأمر" }).max(15, { message: "رقم الهاتف طويل جداً" }),
+  email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
+  studentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
+  parentPhone: z.string().regex(/^01[0125][0-9]{8}$/, { message: "يجب أن يكون الرقم مصرياً ويبدأ بـ 01 (11 رقم)" }),
   selectedStage: z.string().min(1, { message: "يرجى اختيار الصف الدراسي" }),
   registerPassword: z.string().min(6, { message: "كلمة المرور يجب ألا تقل عن 6 أحرف" }),
 });
@@ -39,7 +40,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 // مخطط التحقق لتسجيل الدخول (Zod Schema)
 const loginSchema = z.object({
-  loginPhone: z.string().min(1, { message: "يرجى إدخال رقم الهاتف" }),
+  loginIdentifier: z.string().min(1, { message: "يرجى إدخال رقم الهاتف أو البريد الإلكتروني" }),
   loginPassword: z.string().min(1, { message: "يرجى إدخال كلمة المرور" }),
 });
 
@@ -75,6 +76,9 @@ export default function AuthPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [tempRegData, setTempRegData] = useState<RegisterFormValues | null>(null);
 
   const leftEyeRef = useRef<HTMLDivElement>(null);
   const rightEyeRef = useRef<HTMLDivElement>(null);
@@ -83,6 +87,7 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
+      email: "",
       studentPhone: "",
       parentPhone: "",
       selectedStage: "",
@@ -93,7 +98,7 @@ export default function AuthPage() {
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      loginPhone: "",
+      loginIdentifier: "",
       loginPassword: "",
     },
   });
@@ -171,11 +176,12 @@ export default function AuthPage() {
 
     // 2. الاتصال بـ Supabase مع حماية المهلة الزمنية
     try {
+      // Check if phone or email already exists
       const { data: existingStudent, error: checkError } = await withTimeout(
         supabase
           .from("students")
-          .select("studentPhone")
-          .eq("studentPhone", data.studentPhone)
+          .select("studentPhone, email")
+          .or(`studentPhone.eq.${data.studentPhone},email.eq.${data.email}`)
           .maybeSingle(),
         4500
       );
@@ -185,60 +191,104 @@ export default function AuthPage() {
       }
 
       if (existingStudent) {
-        setMessage({
-          type: "error",
-          text: "رقم هاتف الطالب مسجل مسبقاً في قاعدة البيانات. يرجى تسجيل الدخول مباشرة.",
-        });
+        if (existingStudent.studentPhone === data.studentPhone) {
+          setMessage({
+            type: "error",
+            text: "رقم هاتف الطالب مسجل مسبقاً. يرجى تسجيل الدخول مباشرة.",
+          });
+        } else {
+          setMessage({
+            type: "error",
+            text: "البريد الإلكتروني مسجل مسبقاً. يرجى تسجيل الدخول أو استخدام بريد آخر.",
+          });
+        }
         return;
       }
 
-      const newStudentData = {
-        fullName: data.fullName,
-        studentPhone: data.studentPhone,
-        parentPhone: data.parentPhone,
-        stageId: data.selectedStage,
+      // Instead of inserting into DB right away, we sign up via Supabase Auth
+      // This sends an OTP to their email
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
         password: data.registerPassword,
-        createdAt: new Date().toISOString(),
-      };
-
-      const { error: insertError } = await withTimeout(
-        supabase.from("students").insert([newStudentData]),
-        4500
-      );
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      await withTimeout(
-        supabase.auth.signUp({
-          email: `${data.studentPhone}@senior.platform`,
-          password: data.registerPassword,
-          options: {
-            data: {
-              fullName: data.fullName,
-              stageId: data.selectedStage,
-            },
+        options: {
+          data: {
+            fullName: data.fullName,
+            stageId: data.selectedStage,
           },
-        }),
-        3000
-      ).catch((e) => console.log("Optional auth signup skip:", e));
-
-      setMessage({
-        type: "success",
-        text: "تم إنشاء حسابك بنجاح. جاري التوجيه إلى صفحة تسجيل الدخول...",
+        },
       });
 
-      setTimeout(() => {
-        setIsLogin(true);
-        setMessage({ type: "", text: "" });
-        registerForm.reset();
-      }, 1500);
+      if (signUpError) throw signUpError;
+
+      // Save temp data and show OTP step
+      setTempRegData(data);
+      setIsOtpStep(true);
+      setMessage({
+        type: "success",
+        text: "تم إرسال كود التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني. يرجى إدخاله هنا.",
+      });
+
     } catch (error: any) {
       console.error("Registration error:", error);
       setMessage({
         type: "error",
-        text: error?.message || "حدث خطأ في الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت.",
+        text: error?.message || "حدث خطأ في الاتصال. يرجى المحاولة لاحقاً.",
+      });
+    }
+  };
+
+  // تأكيد كود OTP
+  const handleVerifyOtp = async () => {
+    setMessage({ type: "", text: "" });
+    if (!tempRegData) return;
+    
+    if (otpCode.length !== 6) {
+      setMessage({ type: "error", text: "يرجى كتابة الكود المكون من 6 أرقام بشكل صحيح." });
+      return;
+    }
+
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: tempRegData.email,
+        token: otpCode,
+        type: 'signup'
+      });
+
+      if (verifyError) throw verifyError;
+
+      const newStudentData = {
+        fullName: tempRegData.fullName,
+        email: tempRegData.email,
+        studentPhone: tempRegData.studentPhone,
+        parentPhone: tempRegData.parentPhone,
+        stageId: tempRegData.selectedStage,
+        password: tempRegData.registerPassword,
+        createdAt: new Date().toISOString(),
+      };
+
+      const { error: insertError } = await supabase.from("students").insert([newStudentData]);
+      
+      if (insertError) {
+        // If it fails to insert (e.g. duplicate during concurrent request), we still logged them in auth but we should warn
+        throw insertError;
+      }
+
+      setMessage({
+        type: "success",
+        text: "تم تفعيل حسابك بنجاح! جاري التوجيه إلى المنصة...",
+      });
+
+      // Auto login
+      localStorage.setItem("current_student", JSON.stringify(newStudentData));
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
+
+    } catch (error: any) {
+      console.error("OTP Verification Error:", error);
+      setMessage({
+        type: "error",
+        text: "الكود غير صحيح أو منتهي الصلاحية. يرجى المحاولة مرة أخرى.",
       });
     }
   };
@@ -249,7 +299,7 @@ export default function AuthPage() {
 
     // حساب الإدارة الملكي
     if (
-      (["01223698064", "01068705721", "admin"].includes(data.loginPhone.trim())) &&
+      (["01223698064", "01068705721", "admin"].includes(data.loginIdentifier.trim())) &&
       data.loginPassword === "admin123"
     ) {
       localStorage.setItem("admin_logged_in", "true");
@@ -268,7 +318,9 @@ export default function AuthPage() {
       const localStudentsStr = localStorage.getItem("local_students_db") || "[]";
       const localStudents: any[] = JSON.parse(localStudentsStr);
 
-      const studentData = localStudents.find((s) => s.studentPhone === data.loginPhone);
+      const studentData = localStudents.find(
+        (s) => s.studentPhone === data.loginIdentifier || s.email === data.loginIdentifier
+      );
       if (studentData) {
         if (studentData.password === data.loginPassword) {
           setMessage({
@@ -297,7 +349,7 @@ export default function AuthPage() {
         supabase
           .from("students")
           .select("*")
-          .eq("studentPhone", data.loginPhone)
+          .or(`studentPhone.eq.${data.loginIdentifier},email.eq.${data.loginIdentifier}`)
           .maybeSingle(),
         4500
       );
@@ -430,17 +482,58 @@ export default function AuthPage() {
           </div>
         )}
 
-        {isLogin ? (
+        {isOtpStep ? (
+          <div className="space-y-4">
+            <div className="space-y-1.5 text-center mb-6">
+              <label className={`text-sm font-bold ${darkMode ? 'text-amber-400' : 'text-indigo-600'} block`}>
+                أدخل كود التفعيل
+              </label>
+              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                تم إرسال كود مكون من 6 أرقام إلى بريدك الإلكتروني
+              </p>
+            </div>
+            
+            <Input
+              type="text"
+              placeholder="123456"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+              className={
+                darkMode
+                  ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-14 text-center text-2xl font-mono tracking-[0.5em] focus-visible:ring-amber-500"
+                  : "w-full bg-slate-100 border-slate-300 rounded-xl px-4 h-14 text-center text-2xl font-mono tracking-[0.5em] focus-visible:ring-indigo-500 text-slate-900"
+              }
+              dir="ltr"
+            />
+            
+            <Button
+              onClick={handleVerifyOtp}
+              disabled={otpCode.length !== 6}
+              className="w-full font-black py-6 rounded-xl text-xs bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-md flex items-center justify-center gap-2 mt-4"
+            >
+              <span>تأكيد الحساب</span>
+              <CheckCircle2 className="w-4 h-4" />
+            </Button>
+            
+            <button
+              onClick={() => setIsOtpStep(false)}
+              className={`w-full text-xs font-medium mt-4 ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              العودة للتسجيل
+            </button>
+          </div>
+        ) : isLogin ? (
           <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
-                <Phone className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
-                <span>رقم الهاتف</span>
+                <User className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
+                <span>رقم الهاتف أو الإيميل</span>
               </label>
               <Input
-                type="tel"
-                placeholder="01xxxxxxxxx"
-                {...loginForm.register("loginPhone")}
+                type="text"
+                placeholder="01xxxxxxxxx أو الإيميل"
+                {...loginForm.register("loginIdentifier")}
                 className={
                   darkMode
                     ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-11 text-sm focus-visible:ring-amber-500 text-left"
@@ -448,9 +541,9 @@ export default function AuthPage() {
                 }
                 dir="ltr"
               />
-              {loginForm.formState.errors.loginPhone && (
+              {loginForm.formState.errors.loginIdentifier && (
                 <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  {loginForm.formState.errors.loginPhone.message}
+                  {loginForm.formState.errors.loginIdentifier.message}
                 </p>
               )}
             </div>
@@ -528,6 +621,29 @@ export default function AuthPage() {
               {registerForm.formState.errors.fullName && (
                 <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
                   {registerForm.formState.errors.fullName.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-700'} block flex items-center gap-1.5`}>
+                <Globe className={`w-3.5 h-3.5 ${darkMode ? 'text-amber-400' : 'text-indigo-600'}`} />
+                <span>البريد الإلكتروني</span>
+              </label>
+              <Input
+                type="email"
+                placeholder="example@gmail.com"
+                {...registerForm.register("email")}
+                className={
+                  darkMode
+                    ? "w-full bg-slate-950/80 border-slate-800 rounded-xl px-4 h-10 text-xs focus-visible:ring-amber-500 text-left"
+                    : "w-full bg-slate-100 border-slate-300 rounded-xl px-4 h-10 text-xs focus-visible:ring-indigo-500 text-left text-slate-900"
+                }
+                dir="ltr"
+              />
+              {registerForm.formState.errors.email && (
+                <p className={`text-[11px] font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+                  {registerForm.formState.errors.email.message}
                 </p>
               )}
             </div>
