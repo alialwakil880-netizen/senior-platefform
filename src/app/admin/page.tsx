@@ -165,11 +165,21 @@ export default function AdminPage() {
 
   // جلب المنهج من التخزين وقت التحميل
   useEffect(() => {
-    const loaded = getCurriculum();
-    setCurriculum(loaded);
-    if (loaded[contentStage] && loaded[contentStage].length > 0 && !activeUnitId) {
-      setActiveUnitId(loaded[contentStage][0].id);
-    }
+    const loadCurriculum = async () => {
+      const data = await getCurriculum();
+      setCurriculum(data);
+      if (data[contentStage] && data[contentStage].length > 0 && !activeUnitId) {
+        setActiveUnitId(data[contentStage][0].id);
+      }
+    };
+
+    loadCurriculum();
+
+    window.addEventListener("curriculum_updated", loadCurriculum);
+
+    return () => {
+      window.removeEventListener("curriculum_updated", loadCurriculum);
+    };
   }, []);
 
   // عند تغيير المرحلة التعليمية اختر أول وحدة
@@ -389,7 +399,7 @@ export default function AdminPage() {
   }
 
   // دوال التحكم في الوحدات (Units Management)
-  const handleAddUnit = (e: React.FormEvent) => {
+  const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
     const currentUnits = curriculum[contentStage] || [];
@@ -405,14 +415,14 @@ export default function AdminPage() {
       [contentStage]: [...currentUnits, newUnit],
     };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     setActiveUnitId(newUnit.id);
     setNewUnitTitle("");
     setNewUnitDesc("");
     setShowAddUnitModal(false);
   };
 
-  const handleDeleteUnit = (unitId: string, unitTitle: string) => {
+  const handleDeleteUnit = async (unitId: string, unitTitle: string) => {
     if (!confirm(`هل أنت متأكد من رغبتك في حذف الوحدة "${unitTitle}" وجميع المحاضرات التي بداخلها؟`)) return;
     const currentUnits = curriculum[contentStage] || [];
     const updatedUnits = currentUnits.filter((u) => u.id !== unitId);
@@ -421,14 +431,14 @@ export default function AdminPage() {
       [contentStage]: updatedUnits,
     };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     if (activeUnitId === unitId) {
       setActiveUnitId(updatedUnits[0]?.id || null);
     }
     setEditingLecture(null);
   };
 
-  const handleRenameUnit = (unit: CourseUnit) => {
+  const handleRenameUnit = async (unit: CourseUnit) => {
     const newTitle = prompt("أدخل الاسم الجديد للوحدة:", unit.title);
     if (!newTitle || !newTitle.trim()) return;
     const currentUnits = curriculum[contentStage] || [];
@@ -437,10 +447,10 @@ export default function AdminPage() {
     );
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
   };
 
-  const handleMoveUnitOrder = (unitId: string, direction: "up" | "down") => {
+  const handleMoveUnitOrder = async (unitId: string, direction: "up" | "down") => {
     const currentUnits = [...(curriculum[contentStage] || [])];
     const index = currentUnits.findIndex((u) => u.id === unitId);
     if (index === -1) return;
@@ -454,13 +464,13 @@ export default function AdminPage() {
 
     const updated = { ...curriculum, [contentStage]: currentUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
   };
 
   // دوال التحكم في المحاضرات (Lectures Management)
   const activeUnit = (curriculum[contentStage] || []).find((u) => u.id === activeUnitId);
 
-  const handleAddLecture = (e: React.FormEvent) => {
+  const handleAddLecture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLectureTitle.trim() || !activeUnit) return;
     const newLec: LectureItem = {
@@ -483,14 +493,14 @@ export default function AdminPage() {
     );
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     setEditingLecture(newLec);
     setNewLectureTitle("");
     setNewLectureDesc("");
     setShowAddLectureModal(false);
   };
 
-  const handleDeleteLecture = (lecId: string, lecTitle: string) => {
+  const handleDeleteLecture = async (lecId: string, lecTitle: string) => {
     if (!confirm(`هل أنت متأكد من حذف المحاضرة "${lecTitle}"؟`)) return;
     if (!activeUnit) return;
     const updatedLectures = activeUnit.lectures.filter((l) => l.id !== lecId);
@@ -499,11 +509,11 @@ export default function AdminPage() {
     );
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     if (editingLecture?.id === lecId) setEditingLecture(null);
   };
 
-  const handleMoveLectureToAnotherUnit = (lec: LectureItem, targetUnitId: string) => {
+  const handleMoveLectureToAnotherUnit = async (lec: LectureItem, targetUnitId: string) => {
     if (!activeUnit || targetUnitId === activeUnit.id) return;
     const sourceLectures = activeUnit.lectures.filter((l) => l.id !== lec.id);
     const updatedUnits = (curriculum[contentStage] || []).map((u) => {
@@ -513,12 +523,12 @@ export default function AdminPage() {
     });
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     setEditingLecture(null);
     alert(`تم نقل المحاضرة "${lec.title}" إلى الوحدة المحددة بنجاح.`);
   };
 
-  const handleMoveLectureOrder = (lecId: string, direction: "up" | "down") => {
+  const handleMoveLectureOrder = async (lecId: string, direction: "up" | "down") => {
     if (!activeUnit) return;
     const currentLectures = [...activeUnit.lectures];
     const index = currentLectures.findIndex((l) => l.id === lecId);
@@ -536,11 +546,11 @@ export default function AdminPage() {
     );
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
   };
 
   // تحرير محتوى المحاضرة (Video / PDF / Quiz)
-  const handleSaveLectureContent = () => {
+  const handleSaveLectureContent = async () => {
     if (!editingLecture || !activeUnit) return;
 
     const extractedId = extractYouTubeId(editingLecture.youtubeUrl) || "";
@@ -557,7 +567,7 @@ export default function AdminPage() {
     );
     const updated = { ...curriculum, [contentStage]: updatedUnits };
     setCurriculum(updated);
-    saveCurriculum(updated);
+    await saveCurriculum(updated);
     setEditingLecture(finalizedLecture);
     alert(`تم حفظ ونشر محتوى المحاضرة "${finalizedLecture.title}" بنجاح وتحديثها في لوحة الطلاب.`);
   };

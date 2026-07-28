@@ -18,6 +18,10 @@ export const isSupabaseConfigured = () => {
   );
 };
 
+console.log("SUPABASE URL =", supabaseUrl);
+console.log("SUPABASE KEY =", supabaseAnonKey.substring(0, 20));
+console.log("CONFIGURED =", isSupabaseConfigured());
+
 if (!isSupabaseConfigured() && typeof window !== "undefined") {
   console.warn(
     "Supabase credentials missing or set to placeholder! Operating in local fallback mode."

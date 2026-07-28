@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 export interface QuizQuestion {
   id: string;
   questionText: string;
@@ -50,8 +52,6 @@ export function extractYouTubeId(url?: string): string | null {
 export function validateYouTubeUrl(url: string): boolean {
   return extractYouTubeId(url) !== null;
 }
-
-const STORAGE_KEY = "senior_curriculum_v2";
 
 const initialCurriculum: StageCurriculum = {
   sec3: [
@@ -227,23 +227,51 @@ const initialCurriculum: StageCurriculum = {
   ],
 };
 
-export function getCurriculum(): StageCurriculum {
-  if (typeof window === "undefined") return initialCurriculum;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialCurriculum));
+export async function getCurriculum(): Promise<StageCurriculum> {
+  const { data, error } = await supabase
+    .from("curriculum")
+    .select("*");
+
+  if (error) {
+    console.error(error);
     return initialCurriculum;
   }
-  try {
-    return JSON.parse(stored);
-  } catch (e) {
-    console.error("Failed to parse curriculum from localStorage, using defaults", e);
+
+  if (!data || data.length === 0) {
+    await saveCurriculum(initialCurriculum);
     return initialCurriculum;
   }
+
+  const result: StageCurriculum = {};
+
+  data.forEach((row) => {
+    result[row.stage] = row.data;
+  });
+
+  return result;
 }
 
-export function saveCurriculum(data: StageCurriculum) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+export async function saveCurriculum(data: StageCurriculum) {
+
+  console.log("SAVE DATA:", data);
+
+  const rows = Object.entries(data).map(([stage, units]) => ({
+    stage,
+    data: units,
+  }));
+
+  console.log("ROWS:", rows);
+
+  const { error } = await supabase
+    .from("curriculum")
+    .upsert(rows, {
+      onConflict: "stage",
+    });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
   window.dispatchEvent(new Event("curriculum_updated"));
 }

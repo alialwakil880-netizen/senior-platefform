@@ -133,17 +133,17 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    const loadCurriculum = () => {
-      const data = getCurriculum();
+    const loadCurriculum = async () => {
+      const data = await getCurriculum();
       setCurriculum(data);
     };
+
     loadCurriculum();
 
     window.addEventListener("curriculum_updated", loadCurriculum);
-    window.addEventListener("storage", loadCurriculum);
+
     return () => {
       window.removeEventListener("curriculum_updated", loadCurriculum);
-      window.removeEventListener("storage", loadCurriculum);
     };
   }, []);
 
