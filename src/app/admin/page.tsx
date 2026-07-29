@@ -48,6 +48,7 @@ import {
   Globe,
   Eye,
   EyeOff,
+  Trophy,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -824,6 +825,24 @@ export default function AdminPage() {
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>{t.admin.headerRole}</span>
             </span>
+
+            {/* ✅ زر إدارة الدفعات - الموجود */}
+            <Link
+              href="/admin/payments"
+              className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <span className="text-base">📋</span>
+              <span className="hidden sm:inline">إدارة الدفعات</span>
+            </Link>
+
+            {/* ✅ زر إدارة أوائل الشهر - الجديد */}
+            <Link
+              href="/admin/top-students"
+              className="px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">🏆 أوائل الشهر</span>
+            </Link>
 
             <button
               onClick={toggleLanguage}
