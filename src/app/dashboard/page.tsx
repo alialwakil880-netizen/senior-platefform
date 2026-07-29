@@ -340,20 +340,64 @@ export default function DashboardPage() {
     }
   }, [currentStageUnits, activeLectureId]);
 
-  const toggleLectureTab = (lecId: string, tab: "video" | "materials" | "quiz") => {
-    const cur = activeTabPerLecture[lecId];
-    if (cur === tab) {
-      setActiveTabPerLecture({ ...activeTabPerLecture, [lecId]: null });
-    } else {
-      setActiveTabPerLecture({ ...activeTabPerLecture, [lecId]: tab });
-      if (tab === "video") {
-        const newWatched = { ...watchedVideos, [lecId]: true };
-        setWatchedVideos(newWatched);
-        localStorage.setItem("student_watched_videos", JSON.stringify(newWatched));
-      }
-    }
-  };
+ const toggleLectureTab = async (
+  lecId: string,
+  tab: "video" | "materials" | "quiz"
+) => {
+  const cur = activeTabPerLecture[lecId];
 
+  if (cur === tab) {
+    setActiveTabPerLecture({
+      ...activeTabPerLecture,
+      [lecId]: null,
+    });
+  } else {
+    setActiveTabPerLecture({
+      ...activeTabPerLecture,
+      [lecId]: tab,
+    });
+
+    if (tab === "video") {
+      const newWatched = {
+        ...watchedVideos,
+        [lecId]: true,
+      };
+
+      setWatchedVideos(newWatched);
+      localStorage.setItem(
+        "student_watched_videos",
+        JSON.stringify(newWatched)
+      );
+
+      // حساب التقدم
+      let completedCount = 0;
+
+      currentStageUnits.forEach((u) => {
+        u.lectures.forEach((lec) => {
+          if (lec.isPublished && newWatched[lec.id]) {
+            completedCount++;
+          }
+        });
+      });
+
+      const progressPercentage =
+        totalPublishedLectures === 0
+          ? 0
+          : Math.min(
+              100,
+              Math.round((completedCount / totalPublishedLectures) * 100)
+            );
+
+      // تحديث قاعدة البيانات
+      await supabase
+        .from("students")
+        .update({
+          progress: progressPercentage,
+        })
+        .eq("studentPhone", student.studentPhone);
+    }
+  }
+};
   const handleSelectQuizAnswer = (lecId: string, qId: string, choiceIndex: number) => {
     const curAnswers = quizAnswers[lecId] || {};
     setQuizAnswers({
