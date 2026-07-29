@@ -24,6 +24,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import TopStudents from "@/components/TopStudents";
 
 
 
@@ -571,6 +572,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ═══════════════ TOP STUDENTS SECTION ═══════════════ */}
+      <TopStudents />
 
       {/* ═══════════════ CTA SECTION ═══════════════ */}
       <section className="relative z-10 py-28 sm:py-36">
