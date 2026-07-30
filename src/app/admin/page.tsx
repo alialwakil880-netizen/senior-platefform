@@ -78,12 +78,14 @@ interface StudentRecord {
   watchedCount?: number;
 }
 
+// تعديل تعريف واجهة البيانات لتطابق الجدول الذي أنشأته في Supabase
 interface TopStudentRecord {
   id: string;
-  name: string;
-  stage: string;
-  points: number;
+  student_name: string; // تم التعديل لتطابق اسم العمود في الجدول
   rank: number;
+  stage: string;        // تم الإبقاء عليه لأنه موجود في كود الجدول
+  description: string;  // تم الإبقاء عليه لأنه موجود في كود الجدول
+  image_url?: string;   // تم الإبقاء عليه لأنه موجود في كود الجدول
   created_at?: string;
 }
 
@@ -171,6 +173,7 @@ export default function AdminPage() {
   const [topStudentsList, setTopStudentsList] = useState<TopStudentRecord[]>([]);
   const [isLoadingTopStudents, setIsLoadingTopStudents] = useState(false);
   
+  // جلب الأوائل من Supabase متوافقاً مع أسماء الأعمدة الجديدة
   const loadTopStudents = async () => {
     setIsLoadingTopStudents(true);
     try {
@@ -201,19 +204,22 @@ export default function AdminPage() {
     loadTopStudents();
   }, []);
 
+  // دالة لإضافة طالب جديد للأوائل (حفظ في Supabase)
   const handleAddTopStudent = async () => {
-    const name = prompt("أدخل اسم الطالب المتميز:");
-    if (!name) return;
+    // تعديل الطلب ليناسب أسماء الأعمدة في الجدول
+    const student_name = prompt("أدخل اسم الطالب المتميز:");
+    if (!student_name) return;
     
     const stage = prompt("أدخل المرحلة الدراسية (مثال: sec3):", "sec3");
-    const points = prompt("أدخل عدد النقاط / الدرجات:", "100");
     const rank = prompt("أدخل الترتيب (مثال: 1):", "1");
+    const description = prompt("أدخل وصفاً مختصراً للطالب أو إنجازه:", "طالب متميز");
 
     const newStudentData = {
-      name: name,
+      student_name: student_name,
       stage: stage || "sec3",
-      points: parseInt(points) || 0,
-      rank: parseInt(rank) || 1
+      rank: parseInt(rank) || 1,
+      description: description || "طالب متميز",
+      image_url: null
     };
 
     if (isSupabaseConfigured()) {
@@ -224,7 +230,6 @@ export default function AdminPage() {
 
       if (error) {
         console.error("Error saving to Supabase:", error);
-        // عرض الخطأ الحقيقي للمستخدم
         alert(`حدث خطأ أثناء حفظ البيانات! تفاصيل الخطأ من السيرفر: ${error.message || error.details || "خطأ غير معروف"}`);
         return;
       } else if (data) {
@@ -1807,7 +1812,7 @@ export default function AdminPage() {
                         <th className="p-4 text-center">الترتيب</th>
                         <th className="p-4">اسم الطالب</th>
                         <th className="p-4">المرحلة</th>
-                        <th className="p-4 text-center">النقاط</th>
+                        <th className="p-4 text-center">الوصف</th>
                         <th className="p-4 text-center">إجراءات</th>
                       </tr>
                     </thead>
@@ -1824,13 +1829,15 @@ export default function AdminPage() {
                         topStudentsList.map((student) => (
                           <tr key={student.id} className={darkMode ? "hover:bg-slate-950/40 transition-colors" : "hover:bg-slate-50 transition-colors"}>
                             <td className="p-4 text-center font-black text-yellow-500 text-lg">#{student.rank}</td>
-                            <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{student.name}</td>
+                            <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{student.student_name}</td>
                             <td className="p-4">
                               <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20">
                                 {getStageLabel(student.stage)}
                               </span>
                             </td>
-                            <td className="p-4 text-center font-black text-amber-600">{student.points}</td>
+                            <td className="p-4 text-center text-slate-600 dark:text-slate-400 font-medium truncate max-w-[150px]">
+                                {student.description || "طالب متميز"}
+                            </td>
                             <td className="p-4 text-center">
                               <button
                                 onClick={() => handleDeleteTopStudent(student.id)}
