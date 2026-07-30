@@ -1,11 +1,8 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import Link from "next/link";
 import {
   StageCurriculum,
   CourseUnit,
@@ -79,6 +76,16 @@ interface StudentRecord {
   watchedCount?: number;
 }
 
+// تعريف نوع بيانات الطلاب المتميزين المخزنة في Supabase
+interface TopStudentRecord {
+  id: string; // uuid from supabase
+  name: string;
+  stage: string;
+  points: number;
+  rank: number;
+  created_at?: string;
+}
+
 export default function AdminPage() {
   const { lang, toggleLanguage, t, dir } = useLanguage();
   const [darkMode, setDarkMode] = useState(true);
@@ -98,7 +105,9 @@ export default function AdminPage() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
-  const [activeTab, setActiveTab] = useState<"content" | "students" | "settings">("content");
+  
+  const [activeTab, setActiveTab] = useState<"content" | "students" | "settings" | "topStudents">("content");
+  
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
   const [selectedStudentStats, setSelectedStudentStats] = useState<StudentRecord | null>(null);
 
@@ -134,26 +143,20 @@ export default function AdminPage() {
   const [contentStage, setContentStage] = useState<string>("sec3");
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
 
-  // حالة إضافة وحدة جديدة
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
-  const [newUnitAccess, setNewUnitAccess] = useState<"public" | "paid">("public");
-  const [newUnitPrice, setNewUnitPrice] = useState(0);
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
 
-  // حالة إضافة محاضرة جديدة
   const [newLectureTitle, setNewLectureTitle] = useState("");
   const [newLectureDesc, setNewLectureDesc] = useState("");
   const [showAddLectureModal, setShowAddLectureModal] = useState(false);
 
-  // المحاضرة قيد التحرير الفعلي (Lecture Editor State)
   const [editingLecture, setEditingLecture] = useState<LectureItem | null>(null);
   const [newPdfName, setNewPdfName] = useState("");
   const [newPdfUrl, setNewPdfUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-  // حالة إضافة سؤال MCQ جديد في المحاضرة
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [qText, setQText] = useState("");
   const [qChoice0, setQChoice0] = useState("");
@@ -163,9 +166,112 @@ export default function AdminPage() {
   const [qCorrectIndex, setQCorrectIndex] = useState(0);
   const [qPoints, setQPoints] = useState(10);
 
-  // الطلاب
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
+
+  // --- قسم إدارة الأوائل (Supabase Integration) ---
+  const [topStudentsList, setTopStudentsList] = useState<TopStudentRecord[]>([]);
+  const [isLoadingTopStudents, setIsLoadingTopStudents] = useState(false);
+  
+  // جلب الأوائل من Supabase
+  const loadTopStudents = async () => {
+    setIsLoadingTopStudents(true);
+    try {
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('top_students')
+          .select('*')
+          .order('rank', { ascending: true });
+
+        if (error) {
+          console.error("Supabase Error fetching top students:", error);
+          // في حالة الخطأ (مثلاً الجدول مش موجود)، نقوم بتفريغ القائمة لتجنب الكراش
+          setTopStudentsList([]);
+        } else if (data) {
+          setTopStudentsList(data as TopStudentRecord[]);
+        }
+      } else {
+        // Fallback for local mode if Supabase is not configured
+        const localTop = localStorage.getItem("local_top_students");
+        setTopStudentsList(localTop ? JSON.parse(localTop) : []);
+      }
+    } catch (error) {
+      console.error("Error loading top students:", error);
+    } finally {
+      setIsLoadingTopStudents(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTopStudents();
+  }, []);
+
+  // دالة لإضافة طالب جديد للأوائل (حفظ في Supabase)
+  const handleAddTopStudent = async () => {
+    const name = prompt("أدخل اسم الطالب المتميز:");
+    if (!name) return;
+    
+    const stage = prompt("أدخل المرحلة الدراسية (مثال: sec3):", "sec3");
+    const points = prompt("أدخل عدد النقاط / الدرجات:", "100");
+    const rank = prompt("أدخل الترتيب (مثال: 1):", "1");
+
+    const newStudentData = {
+      name: name,
+      stage: stage || "sec3",
+      points: parseInt(points) || 0,
+      rank: parseInt(rank) || 1
+    };
+
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('top_students')
+        .insert([newStudentData])
+        .select();
+
+      if (error) {
+        console.error("Error saving to Supabase:", error);
+        alert("حدث خطأ أثناء حفظ البيانات في قاعدة البيانات!");
+        return;
+      } else if (data) {
+        // تحديث القائمة المحلية بالبيانات القادمة من السوبا (التي تحتوي على الـ id)
+        setTopStudentsList(prev => [...prev, data[0] as TopStudentRecord]);
+        alert("تم إضافة الطالب لقائمة الأوائل بنجاح!");
+      }
+    } else {
+      // حل بديل في حال عدم الاتصال
+      const newStudentWithId = { ...newStudentData, id: Date.now().toString() };
+      const updatedList = [...topStudentsList, newStudentWithId];
+      setTopStudentsList(updatedList);
+      localStorage.setItem("local_top_students", JSON.stringify(updatedList));
+      alert("تم إضافة الطالب لقائمة الأوائل بنجاح (وضع عدم الاتصال)!");
+    }
+  };
+
+  const handleDeleteTopStudent = async (id: string) => {
+    if(!confirm("هل أنت متأكد من حذف هذا الطالب من قائمة الأوائل؟")) return;
+
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase
+        .from('top_students')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error("Error deleting from Supabase:", error);
+        alert("حدث خطأ أثناء حذف الطالب من قاعدة البيانات!");
+        return;
+      }
+    }
+    
+    // حذف من الواجهة (UI) سواء تم الحذف من السوبا أو من التخزين المحلي
+    const updatedList = topStudentsList.filter(s => s.id !== id);
+    setTopStudentsList(updatedList);
+    
+    if (!isSupabaseConfigured()) {
+      localStorage.setItem("local_top_students", JSON.stringify(updatedList));
+    }
+  };
+  // -------------------------------------------------------
 
   // جلب المنهج من التخزين وقت التحميل
   useEffect(() => {
@@ -237,16 +343,6 @@ export default function AdminPage() {
                         status: "ناجح",
                         completedAt: "09 يوليو 2026 - 06:15 م",
                       },
-                      {
-                        id: "qs-103",
-                        quizTitle: "كويز القطعة السريعة (Reading Comprehension)",
-                        lectureTitle: "المحاضرة الثالثة: القراءة المتقدمة والاستنتاج",
-                        score: 20,
-                        totalPoints: 20,
-                        percentage: 100,
-                        status: "ممتاز",
-                        completedAt: "08 يوليو 2026 - 04:00 م",
-                      },
                     ],
                   },
                 ]
@@ -313,7 +409,8 @@ export default function AdminPage() {
   const handleResetPassword = async (student: StudentRecord) => {
     const displayName = student.fullName || student.name || "الطالب";
     const studentPhone = student.studentPhone || student.phone;
-    const newPass = window.prompt(`أدخل كلمة المرور الجديدة للطالب (${displayName}):`, "123456");
+    const newPass = prompt(`أدخل كلمة المرور الجديدة للطالب (${displayName}):`, "123456");
+
     if (!newPass) return;
 
     if (isSupabaseConfigured() && studentPhone) {
@@ -405,32 +502,23 @@ export default function AdminPage() {
   const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
-    
     const currentUnits = curriculum[contentStage] || [];
     const newUnit: CourseUnit = {
       id: `unit-${Date.now()}`,
       title: newUnitTitle.trim(),
       description: newUnitDesc.trim(),
-      access: newUnitAccess,
-      price: newUnitAccess === "paid" ? newUnitPrice : 0,
       lectures: [],
       order: currentUnits.length + 1,
     };
-    
     const updated = {
       ...curriculum,
       [contentStage]: [...currentUnits, newUnit],
     };
-    
     setCurriculum(updated);
     await saveCurriculum(updated);
     setActiveUnitId(newUnit.id);
-    
-    // Reset form
     setNewUnitTitle("");
     setNewUnitDesc("");
-    setNewUnitAccess("public");
-    setNewUnitPrice(0);
     setShowAddUnitModal(false);
   };
 
@@ -451,7 +539,7 @@ export default function AdminPage() {
   };
 
   const handleRenameUnit = async (unit: CourseUnit) => {
-    const newTitle = window.prompt("أدخل الاسم الجديد للوحدة:", unit.title);
+    const newTitle = prompt("أدخل الاسم الجديد للوحدة:", unit.title);
     if (!newTitle || !newTitle.trim()) return;
     const currentUnits = curriculum[contentStage] || [];
     const updatedUnits = currentUnits.map((u) =>
@@ -485,7 +573,6 @@ export default function AdminPage() {
   const handleAddLecture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLectureTitle.trim() || !activeUnit) return;
-    
     const newLec: LectureItem = {
       id: `lec-${Date.now()}`,
       title: newLectureTitle.trim(),
@@ -498,8 +585,6 @@ export default function AdminPage() {
         questions: [],
       },
       isPublished: true,
-      status: "public",
-      price: 0,
       order: activeUnit.lectures.length + 1,
     };
 
@@ -840,24 +925,6 @@ export default function AdminPage() {
               <span>{t.admin.headerRole}</span>
             </span>
 
-            {/* ✅ زر إدارة الدفعات */}
-            <Link
-              href="/admin/payments"
-              className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-            >
-              <span className="text-base">📋</span>
-              <span className="hidden sm:inline">إدارة الدفعات</span>
-            </Link>
-
-            {/* ✅ زر إدارة أوائل الشهر */}
-            <Link
-              href="/admin/top-students"
-              className="px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">🏆 أوائل الشهر</span>
-            </Link>
-
             <button
               onClick={toggleLanguage}
               className={
@@ -928,6 +995,19 @@ export default function AdminPage() {
           >
             <Users className="w-4 h-4" />
             <span>{t.admin.tabStudents}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("topStudents")}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border ${
+              activeTab === "topStudents"
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md border-transparent"
+                : darkMode
+                  ? "bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-900"
+                  : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>الأوائل (Top Students)</span>
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -1025,17 +1105,6 @@ export default function AdminPage() {
                               <h4 className={`font-black text-sm ${isSelected ? "text-amber-500 dark:text-amber-400" : "text-slate-900 dark:text-slate-100"}`}>
                                 {unit.title}
                               </h4>
-                              <div className="mt-2">
-                                {unit.access === "paid" ? (
-                                  <span className="px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold">
-                                    🔒 مدفوعة - {unit.price} جنيه
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold">
-                                    🟢 مجانية
-                                  </span>
-                                )}
-                              </div>
                             </div>
                             {unit.description && (
                               <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 line-clamp-1 font-medium">
@@ -1097,12 +1166,6 @@ export default function AdminPage() {
                         {activeUnit.description && (
                           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{activeUnit.description}</p>
                         )}
-                        {activeUnit.access === "paid" && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-bold">💰 سعر الاشتراك: {activeUnit.price} ج.م</p>
-                        )}
-                        {activeUnit.access === "public" && (
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-bold">✅ وحدة مجانية</p>
-                        )}
                       </div>
                       <Button
                         onClick={() => setShowAddLectureModal(true)}
@@ -1151,21 +1214,6 @@ export default function AdminPage() {
                                     >
                                       {lec.isPublished ? t.admin.published : t.admin.draft}
                                     </span>
-                                    {lec.status === "public" && (
-                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
-                                        🌐 عام
-                                      </span>
-                                    )}
-                                    {lec.status === "draft" && (
-                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                                        📝 مسودة
-                                      </span>
-                                    )}
-                                    {lec.status === "paid" && (
-                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">
-                                        💰 مدفوعة - {lec.price || 0} ج.م
-                                      </span>
-                                    )}
                                   </div>
                                   <div className="text-[11px] text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-5 font-medium">
                                     <span className="flex items-center gap-1">
@@ -1293,66 +1341,6 @@ export default function AdminPage() {
                               <option className="dark:bg-slate-900" value="false">مسودة خاصة غير ظاهرة (Unpublished Draft)</option>
                             </select>
                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">نوع المحاضرة</label>
-                            <select
-                              value={editingLecture.status || "public"}
-                              onChange={(e) => {
-                                const newStatus = e.target.value as "public" | "draft" | "paid";
-                                setEditingLecture({
-                                  ...editingLecture,
-                                  status: newStatus,
-                                  price: newStatus === "paid" ? (editingLecture.price || 0) : 0,
-                                });
-                              }}
-                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 text-xs font-bold text-slate-900 dark:text-slate-200 outline-none focus:border-purple-500"
-                            >
-                              <option className="dark:bg-slate-900" value="public">🌐 عامة - للجميع (Public)</option>
-                              <option className="dark:bg-slate-900" value="draft">📝 مسودة - غير منشورة (Draft)</option>
-                              <option className="dark:bg-slate-900" value="paid">💰 مدفوعة - باشتراك (Paid)</option>
-                            </select>
-                          </div>
-
-                          {editingLecture.status === "paid" && (
-                            <div className="space-y-1">
-                              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">سعر المحاضرة (جنيه)</label>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={editingLecture.price || 0}
-                                onChange={(e) =>
-                                  setEditingLecture({
-                                    ...editingLecture,
-                                    price: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                placeholder="مثلاً: 50"
-                                className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl text-xs h-10 font-bold text-slate-900 dark:text-slate-100 focus-visible:ring-purple-500"
-                              />
-                              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                                📱 رقم فودافون كاش: 01068705721
-                              </p>
-                            </div>
-                          )}
-
-                          {editingLecture.status === "public" && (
-                            <div className="space-y-1">
-                              <div className="h-10 flex items-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                                ✅ هذه المحاضرة مجانية ومتاحة للجميع
-                              </div>
-                            </div>
-                          )}
-
-                          {editingLecture.status === "draft" && (
-                            <div className="space-y-1">
-                              <div className="h-10 flex items-center text-amber-600 dark:text-amber-400 text-xs font-bold">
-                                📝 هذه المحاضرة مسودة وغير ظاهرة للطلاب
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         <div className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1805,6 +1793,77 @@ export default function AdminPage() {
           </div>
         )}
 
+        {activeTab === "topStudents" && (
+          <div className="space-y-6">
+             <Card className="p-5 glass-card rounded-3xl flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-5 h-5 text-yellow-500 shrink-0" />
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">إدارة قائمة الأوائل (Supabase)</span>
+                  <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border ${
+                      darkMode ? "bg-slate-900 text-yellow-400 border-slate-800" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                    }`}>
+                    {topStudentsList.length} طالب
+                  </span>
+                </div>
+                <Button
+                  onClick={handleAddTopStudent}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-5 py-2 rounded-xl text-xs shadow-md flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>إضافة طالب جديد</span>
+                </Button>
+             </Card>
+
+             <Card className="glass-card rounded-3xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right border-collapse">
+                    <thead>
+                      <tr className={darkMode ? "bg-slate-950 border-b border-slate-800 text-slate-400 text-xs font-bold" : "bg-slate-100 border-b border-slate-200 text-slate-600 text-xs font-bold"}>
+                        <th className="p-4 text-center">الترتيب</th>
+                        <th className="p-4">اسم الطالب</th>
+                        <th className="p-4">المرحلة</th>
+                        <th className="p-4 text-center">النقاط</th>
+                        <th className="p-4 text-center">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs font-medium divide-y divide-slate-800/60">
+                      {isLoadingTopStudents ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-purple-600 dark:text-purple-400 font-bold animate-pulse">جاري التحميل من السيرفر...</td>
+                        </tr>
+                      ) : topStudentsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-slate-600 dark:text-slate-400 font-bold">لا يوجد أوائل حتى الآن، اضغط إضافة طالب جديد.</td>
+                        </tr>
+                      ) : (
+                        topStudentsList.map((student) => (
+                          <tr key={student.id} className={darkMode ? "hover:bg-slate-950/40 transition-colors" : "hover:bg-slate-50 transition-colors"}>
+                            <td className="p-4 text-center font-black text-yellow-500 text-lg">#{student.rank}</td>
+                            <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{student.name}</td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20">
+                                {getStageLabel(student.stage)}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center font-black text-amber-600">{student.points}</td>
+                            <td className="p-4 text-center">
+                              <button
+                                onClick={() => handleDeleteTopStudent(student.id)}
+                                className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold text-[11px]"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 inline-block ml-1" /> حذف
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+             </Card>
+          </div>
+        )}
+
         {activeTab === "settings" && (
           <div className="space-y-6">
             <Card className="glass-card rounded-3xl p-6 sm:p-8 space-y-6 max-w-2xl mx-auto shadow-md">
@@ -1969,51 +2028,6 @@ export default function AdminPage() {
                   className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-xs font-bold h-11"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold block mb-2 text-slate-700 dark:text-slate-300">
-                  نوع الوحدة
-                </label>
-
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={newUnitAccess === "public"}
-                      onChange={() => {
-                        setNewUnitAccess("public");
-                        setNewUnitPrice(0);
-                      }}
-                    />
-                    مجانية
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={newUnitAccess === "paid"}
-                      onChange={() => setNewUnitAccess("paid")}
-                    />
-                    مدفوعة
-                  </label>
-                </div>
-              </div>
-
-              {newUnitAccess === "paid" && (
-                <div>
-                  <label className="text-xs font-bold block mb-1.5 text-slate-700 dark:text-slate-300">
-                    سعر الاشتراك (جنيه)
-                  </label>
-
-                  <Input
-                    type="number"
-                    min={1}
-                    value={newUnitPrice}
-                    onChange={(e) => setNewUnitPrice(Number(e.target.value))}
-                    placeholder="مثلاً 250"
-                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-xs font-bold h-11"
-                  />
-                </div>
-              )}
               <div className="flex gap-2 pt-2">
                 <Button type="submit" className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 hover:from-amber-600 hover:to-yellow-600 font-black py-5 flex-1 rounded-xl text-xs">
                   إضافة الوحدة الآن
@@ -2105,6 +2119,7 @@ export default function AdminPage() {
               </button>
             </div>
 
+            {/* بطاقات المؤشرات العامة (KPI Cards) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center">
                 <span className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1 flex items-center gap-1.5">
@@ -2168,6 +2183,7 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* تفاصيل الاختبارات السابقة (Quiz Scores History Table) */}
             <div className="space-y-3">
               <h4 className="font-black text-sm text-slate-900 dark:text-slate-200 flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-500" />
