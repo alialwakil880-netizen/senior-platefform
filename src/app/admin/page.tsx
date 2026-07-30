@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,7 @@ import {
   Globe,
   Eye,
   EyeOff,
+  Trophy,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -75,6 +78,15 @@ interface StudentRecord {
   watchedCount?: number;
 }
 
+interface TopStudentRecord {
+  id: string;
+  name: string;
+  stage: string;
+  points: number;
+  rank: number;
+  created_at?: string;
+}
+
 export default function AdminPage() {
   const { lang, toggleLanguage, t, dir } = useLanguage();
   const [darkMode, setDarkMode] = useState(true);
@@ -94,11 +106,12 @@ export default function AdminPage() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
-  const [activeTab, setActiveTab] = useState<"content" | "students" | "settings">("content");
+  
+  const [activeTab, setActiveTab] = useState<"content" | "students" | "settings" | "topStudents">("content");
+  
   const [selectedStageFilter, setSelectedStageFilter] = useState<string>("all");
   const [selectedStudentStats, setSelectedStudentStats] = useState<StudentRecord | null>(null);
 
-  // شروط وحماية دخول المدرس / الإدارة
   const [isCheckingAdminAuth, setIsCheckingAdminAuth] = useState<boolean>(true);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
   const [adminLoginPhone, setAdminLoginPhone] = useState<string>("");
@@ -125,29 +138,24 @@ export default function AdminPage() {
     setIsCheckingAdminAuth(false);
   }, []);
 
-  // نظام إدارة المناهج الديناميكي الشامل (Units & Lectures & Content)
   const [curriculum, setCurriculum] = useState<StageCurriculum>({});
   const [contentStage, setContentStage] = useState<string>("sec3");
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
 
-  // حالة إضافة وحدة جديدة
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
 
-  // حالة إضافة محاضرة جديدة
   const [newLectureTitle, setNewLectureTitle] = useState("");
   const [newLectureDesc, setNewLectureDesc] = useState("");
   const [showAddLectureModal, setShowAddLectureModal] = useState(false);
 
-  // المحاضرة قيد التحرير الفعلي (Lecture Editor State)
   const [editingLecture, setEditingLecture] = useState<LectureItem | null>(null);
   const [newPdfName, setNewPdfName] = useState("");
   const [newPdfUrl, setNewPdfUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-  // حالة إضافة سؤال MCQ جديد في المحاضرة
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [qText, setQText] = useState("");
   const [qChoice0, setQChoice0] = useState("");
@@ -157,11 +165,104 @@ export default function AdminPage() {
   const [qCorrectIndex, setQCorrectIndex] = useState(0);
   const [qPoints, setQPoints] = useState(10);
 
-  // الطلاب
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
 
-  // جلب المنهج من التخزين وقت التحميل
+  const [topStudentsList, setTopStudentsList] = useState<TopStudentRecord[]>([]);
+  const [isLoadingTopStudents, setIsLoadingTopStudents] = useState(false);
+  
+  const loadTopStudents = async () => {
+    setIsLoadingTopStudents(true);
+    try {
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('top_students')
+          .select('*')
+          .order('rank', { ascending: true });
+
+        if (error) {
+          console.error("Supabase Error fetching top students:", error);
+          setTopStudentsList([]);
+        } else if (data) {
+          setTopStudentsList(data as TopStudentRecord[]);
+        }
+      } else {
+        const localTop = localStorage.getItem("local_top_students");
+        setTopStudentsList(localTop ? JSON.parse(localTop) : []);
+      }
+    } catch (error) {
+      console.error("Error loading top students:", error);
+    } finally {
+      setIsLoadingTopStudents(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTopStudents();
+  }, []);
+
+  const handleAddTopStudent = async () => {
+    const name = prompt("أدخل اسم الطالب المتميز:");
+    if (!name) return;
+    
+    const stage = prompt("أدخل المرحلة الدراسية (مثال: sec3):", "sec3");
+    const points = prompt("أدخل عدد النقاط / الدرجات:", "100");
+    const rank = prompt("أدخل الترتيب (مثال: 1):", "1");
+
+    const newStudentData = {
+      name: name,
+      stage: stage || "sec3",
+      points: parseInt(points) || 0,
+      rank: parseInt(rank) || 1
+    };
+
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('top_students')
+        .insert([newStudentData])
+        .select();
+
+      if (error) {
+        console.error("Error saving to Supabase:", error);
+        alert("حدث خطأ أثناء حفظ البيانات في قاعدة البيانات!");
+        return;
+      } else if (data) {
+        setTopStudentsList(prev => [...prev, data[0] as TopStudentRecord]);
+        alert("تم إضافة الطالب لقائمة الأوائل بنجاح!");
+      }
+    } else {
+      const newStudentWithId = { ...newStudentData, id: Date.now().toString() };
+      const updatedList = [...topStudentsList, newStudentWithId];
+      setTopStudentsList(updatedList);
+      localStorage.setItem("local_top_students", JSON.stringify(updatedList));
+      alert("تم إضافة الطالب لقائمة الأوائل بنجاح (وضع عدم الاتصال)!");
+    }
+  };
+
+  const handleDeleteTopStudent = async (id: string) => {
+    if(!confirm("هل أنت متأكد من حذف هذا الطالب من قائمة الأوائل؟")) return;
+
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase
+        .from('top_students')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error("Error deleting from Supabase:", error);
+        alert("حدث خطأ أثناء حذف الطالب من قاعدة البيانات!");
+        return;
+      }
+    }
+    
+    const updatedList = topStudentsList.filter(s => s.id !== id);
+    setTopStudentsList(updatedList);
+    
+    if (!isSupabaseConfigured()) {
+      localStorage.setItem("local_top_students", JSON.stringify(updatedList));
+    }
+  };
+
   useEffect(() => {
     const loadCurriculum = async () => {
       const data = await getCurriculum();
@@ -180,7 +281,6 @@ export default function AdminPage() {
     };
   }, []);
 
-  // عند تغيير المرحلة التعليمية اختر أول وحدة
   useEffect(() => {
     if (curriculum[contentStage] && curriculum[contentStage].length > 0) {
       setActiveUnitId(curriculum[contentStage][0].id);
@@ -190,7 +290,6 @@ export default function AdminPage() {
     setEditingLecture(null);
   }, [contentStage, curriculum]);
 
-  // جلب الطلاب
   useEffect(() => {
     const fetchStudents = async () => {
       if (!isSupabaseConfigured()) {
@@ -230,16 +329,6 @@ export default function AdminPage() {
                         percentage: 75,
                         status: "ناجح",
                         completedAt: "09 يوليو 2026 - 06:15 م",
-                      },
-                      {
-                        id: "qs-103",
-                        quizTitle: "كويز القطعة السريعة (Reading Comprehension)",
-                        lectureTitle: "المحاضرة الثالثة: القراءة المتقدمة والاستنتاج",
-                        score: 20,
-                        totalPoints: 20,
-                        percentage: 100,
-                        status: "ممتاز",
-                        completedAt: "08 يوليو 2026 - 04:00 م",
                       },
                     ],
                   },
@@ -396,7 +485,6 @@ export default function AdminPage() {
     return labels[key] || "مرحلة تعليمية";
   }
 
-  // دوال التحكم في الوحدات (Units Management)
   const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
@@ -465,7 +553,6 @@ export default function AdminPage() {
     await saveCurriculum(updated);
   };
 
-  // دوال التحكم في المحاضرات (Lectures Management)
   const activeUnit = (curriculum[contentStage] || []).find((u) => u.id === activeUnitId);
 
   const handleAddLecture = async (e: React.FormEvent) => {
@@ -547,7 +634,6 @@ export default function AdminPage() {
     await saveCurriculum(updated);
   };
 
-  // تحرير محتوى المحاضرة (Video / PDF / Quiz)
   const handleSaveLectureContent = async () => {
     if (!editingLecture || !activeUnit) return;
 
@@ -893,6 +979,19 @@ export default function AdminPage() {
           >
             <Users className="w-4 h-4" />
             <span>{t.admin.tabStudents}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("topStudents")}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border ${
+              activeTab === "topStudents"
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md border-transparent"
+                : darkMode
+                  ? "bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-900"
+                  : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>الأوائل (Top Students)</span>
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -1678,6 +1777,77 @@ export default function AdminPage() {
           </div>
         )}
 
+        {activeTab === "topStudents" && (
+          <div className="space-y-6">
+             <Card className="p-5 glass-card rounded-3xl flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-5 h-5 text-yellow-500 shrink-0" />
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">إدارة قائمة الأوائل (Supabase)</span>
+                  <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border ${
+                      darkMode ? "bg-slate-900 text-yellow-400 border-slate-800" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                    }`}>
+                    {topStudentsList.length} طالب
+                  </span>
+                </div>
+                <Button
+                  onClick={handleAddTopStudent}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-5 py-2 rounded-xl text-xs shadow-md flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>إضافة طالب جديد</span>
+                </Button>
+             </Card>
+
+             <Card className="glass-card rounded-3xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right border-collapse">
+                    <thead>
+                      <tr className={darkMode ? "bg-slate-950 border-b border-slate-800 text-slate-400 text-xs font-bold" : "bg-slate-100 border-b border-slate-200 text-slate-600 text-xs font-bold"}>
+                        <th className="p-4 text-center">الترتيب</th>
+                        <th className="p-4">اسم الطالب</th>
+                        <th className="p-4">المرحلة</th>
+                        <th className="p-4 text-center">النقاط</th>
+                        <th className="p-4 text-center">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs font-medium divide-y divide-slate-800/60">
+                      {isLoadingTopStudents ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-purple-600 dark:text-purple-400 font-bold animate-pulse">جاري التحميل من السيرفر...</td>
+                        </tr>
+                      ) : topStudentsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-slate-600 dark:text-slate-400 font-bold">لا يوجد أوائل حتى الآن، اضغط إضافة طالب جديد.</td>
+                        </tr>
+                      ) : (
+                        topStudentsList.map((student) => (
+                          <tr key={student.id} className={darkMode ? "hover:bg-slate-950/40 transition-colors" : "hover:bg-slate-50 transition-colors"}>
+                            <td className="p-4 text-center font-black text-yellow-500 text-lg">#{student.rank}</td>
+                            <td className="p-4 font-bold text-slate-900 dark:text-slate-100">{student.name}</td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 font-bold border border-purple-500/20">
+                                {getStageLabel(student.stage)}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center font-black text-amber-600">{student.points}</td>
+                            <td className="p-4 text-center">
+                              <button
+                                onClick={() => handleDeleteTopStudent(student.id)}
+                                className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold text-[11px]"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 inline-block ml-1" /> حذف
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+             </Card>
+          </div>
+        )}
+
         {activeTab === "settings" && (
           <div className="space-y-6">
             <Card className="glass-card rounded-3xl p-6 sm:p-8 space-y-6 max-w-2xl mx-auto shadow-md">
@@ -1933,7 +2103,6 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* بطاقات المؤشرات العامة (KPI Cards) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center">
                 <span className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1 flex items-center gap-1.5">
@@ -1997,7 +2166,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* تفاصيل الاختبارات السابقة (Quiz Scores History Table) */}
             <div className="space-y-3">
               <h4 className="font-black text-sm text-slate-900 dark:text-slate-200 flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-500" />
@@ -2101,82 +2269,3 @@ export default function AdminPage() {
     </div>
   );
 }
-Here's the complete code with the new "🏆 أوائل الشهر" button added to the admin panel header:
-
-tsx
-"use client";
-
-import React, { useState, useEffect, useRef } from "react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import {
-  StageCurriculum,
-  CourseUnit,
-  LectureItem,
-  QuizQuestion,
-  LectureMaterial,
-  getCurriculum,
-  saveCurriculum,
-  extractYouTubeId,
-  validateYouTubeUrl,
-} from "@/lib/curriculum";
-import {
-  LayoutDashboard,
-  Users,
-  FolderPlus,
-  Video,
-  FileText,
-  HelpCircle,
-  Trash2,
-  Edit3,
-  ArrowUp,
-  ArrowDown,
-  Save,
-  Plus,
-  LogOut,
-  Sun,
-  Moon,
-  KeyRound,
-  CheckCircle2,
-  AlertTriangle,
-  BookOpen,
-  ShieldCheck,
-  FolderOpen,
-  Sparkles,
-  X,
-  PlusCircle,
-  GraduationCap,
-  Award,
-  BarChart3,
-  Clock,
-  Globe,
-  Eye,
-  EyeOff,
-  Trophy,
-} from "lucide-react";
-import { useLanguage } from "@/lib/i18n";
-
-interface QuizScoreRecord {
-  id: string;
-  quizTitle: string;
-  lectureTitle: string;
-  score: number;
-  totalPoints: number;
-  percentage: number;
-  status: "ممتاز" | "ناجح" | "يحتاج مراجعة" | "غير مجتاز";
-  completedAt: string;
-}
-
-interface StudentRecord {
-  id?: string;
-  fullName?: string;
-  name?: string;
-  studentPhone?: string;
-  phone?: string;
-  stageId?: string;
-  stage?: string;
-  progress?: number;
-  lastQuiz?: string;
-  pas
