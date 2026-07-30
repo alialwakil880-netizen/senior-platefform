@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
 import {
   StageCurriculum,
   CourseUnit,
@@ -136,6 +137,8 @@ export default function AdminPage() {
   // حالة إضافة وحدة جديدة
   const [newUnitTitle, setNewUnitTitle] = useState("");
   const [newUnitDesc, setNewUnitDesc] = useState("");
+  const [newUnitAccess, setNewUnitAccess] = useState<"public" | "paid">("public");
+  const [newUnitPrice, setNewUnitPrice] = useState(0);
   const [showAddUnitModal, setShowAddUnitModal] = useState(false);
 
   // حالة إضافة محاضرة جديدة
@@ -310,8 +313,7 @@ export default function AdminPage() {
   const handleResetPassword = async (student: StudentRecord) => {
     const displayName = student.fullName || student.name || "الطالب";
     const studentPhone = student.studentPhone || student.phone;
-    const newPass = prompt(`أدخل كلمة المرور الجديدة للطالب (${displayName}):`, "123456");
-
+    const newPass = window.prompt(`أدخل كلمة المرور الجديدة للطالب (${displayName}):`, "123456");
     if (!newPass) return;
 
     if (isSupabaseConfigured() && studentPhone) {
@@ -403,23 +405,32 @@ export default function AdminPage() {
   const handleAddUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
+    
     const currentUnits = curriculum[contentStage] || [];
     const newUnit: CourseUnit = {
       id: `unit-${Date.now()}`,
       title: newUnitTitle.trim(),
       description: newUnitDesc.trim(),
+      access: newUnitAccess,
+      price: newUnitAccess === "paid" ? newUnitPrice : 0,
       lectures: [],
       order: currentUnits.length + 1,
     };
+    
     const updated = {
       ...curriculum,
       [contentStage]: [...currentUnits, newUnit],
     };
+    
     setCurriculum(updated);
     await saveCurriculum(updated);
     setActiveUnitId(newUnit.id);
+    
+    // Reset form
     setNewUnitTitle("");
     setNewUnitDesc("");
+    setNewUnitAccess("public");
+    setNewUnitPrice(0);
     setShowAddUnitModal(false);
   };
 
@@ -440,7 +451,7 @@ export default function AdminPage() {
   };
 
   const handleRenameUnit = async (unit: CourseUnit) => {
-    const newTitle = prompt("أدخل الاسم الجديد للوحدة:", unit.title);
+    const newTitle = window.prompt("أدخل الاسم الجديد للوحدة:", unit.title);
     if (!newTitle || !newTitle.trim()) return;
     const currentUnits = curriculum[contentStage] || [];
     const updatedUnits = currentUnits.map((u) =>
@@ -474,6 +485,7 @@ export default function AdminPage() {
   const handleAddLecture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLectureTitle.trim() || !activeUnit) return;
+    
     const newLec: LectureItem = {
       id: `lec-${Date.now()}`,
       title: newLectureTitle.trim(),
@@ -486,6 +498,8 @@ export default function AdminPage() {
         questions: [],
       },
       isPublished: true,
+      status: "public",
+      price: 0,
       order: activeUnit.lectures.length + 1,
     };
 
@@ -826,7 +840,7 @@ export default function AdminPage() {
               <span>{t.admin.headerRole}</span>
             </span>
 
-            {/* ✅ زر إدارة الدفعات - الموجود */}
+            {/* ✅ زر إدارة الدفعات */}
             <Link
               href="/admin/payments"
               className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
@@ -835,7 +849,7 @@ export default function AdminPage() {
               <span className="hidden sm:inline">إدارة الدفعات</span>
             </Link>
 
-            {/* ✅ زر إدارة أوائل الشهر - الجديد */}
+            {/* ✅ زر إدارة أوائل الشهر */}
             <Link
               href="/admin/top-students"
               className="px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
@@ -1011,6 +1025,17 @@ export default function AdminPage() {
                               <h4 className={`font-black text-sm ${isSelected ? "text-amber-500 dark:text-amber-400" : "text-slate-900 dark:text-slate-100"}`}>
                                 {unit.title}
                               </h4>
+                              <div className="mt-2">
+                                {unit.access === "paid" ? (
+                                  <span className="px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold">
+                                    🔒 مدفوعة - {unit.price} جنيه
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold">
+                                    🟢 مجانية
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             {unit.description && (
                               <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 line-clamp-1 font-medium">
@@ -1072,6 +1097,12 @@ export default function AdminPage() {
                         {activeUnit.description && (
                           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{activeUnit.description}</p>
                         )}
+                        {activeUnit.access === "paid" && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-bold">💰 سعر الاشتراك: {activeUnit.price} ج.م</p>
+                        )}
+                        {activeUnit.access === "public" && (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-bold">✅ وحدة مجانية</p>
+                        )}
                       </div>
                       <Button
                         onClick={() => setShowAddLectureModal(true)}
@@ -1120,6 +1151,21 @@ export default function AdminPage() {
                                     >
                                       {lec.isPublished ? t.admin.published : t.admin.draft}
                                     </span>
+                                    {lec.status === "public" && (
+                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+                                        🌐 عام
+                                      </span>
+                                    )}
+                                    {lec.status === "draft" && (
+                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+                                        📝 مسودة
+                                      </span>
+                                    )}
+                                    {lec.status === "paid" && (
+                                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black border bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">
+                                        💰 مدفوعة - {lec.price || 0} ج.م
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-[11px] text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-5 font-medium">
                                     <span className="flex items-center gap-1">
@@ -1247,6 +1293,66 @@ export default function AdminPage() {
                               <option className="dark:bg-slate-900" value="false">مسودة خاصة غير ظاهرة (Unpublished Draft)</option>
                             </select>
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">نوع المحاضرة</label>
+                            <select
+                              value={editingLecture.status || "public"}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as "public" | "draft" | "paid";
+                                setEditingLecture({
+                                  ...editingLecture,
+                                  status: newStatus,
+                                  price: newStatus === "paid" ? (editingLecture.price || 0) : 0,
+                                });
+                              }}
+                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 text-xs font-bold text-slate-900 dark:text-slate-200 outline-none focus:border-purple-500"
+                            >
+                              <option className="dark:bg-slate-900" value="public">🌐 عامة - للجميع (Public)</option>
+                              <option className="dark:bg-slate-900" value="draft">📝 مسودة - غير منشورة (Draft)</option>
+                              <option className="dark:bg-slate-900" value="paid">💰 مدفوعة - باشتراك (Paid)</option>
+                            </select>
+                          </div>
+
+                          {editingLecture.status === "paid" && (
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">سعر المحاضرة (جنيه)</label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={editingLecture.price || 0}
+                                onChange={(e) =>
+                                  setEditingLecture({
+                                    ...editingLecture,
+                                    price: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                placeholder="مثلاً: 50"
+                                className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl text-xs h-10 font-bold text-slate-900 dark:text-slate-100 focus-visible:ring-purple-500"
+                              />
+                              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                                📱 رقم فودافون كاش: 01068705721
+                              </p>
+                            </div>
+                          )}
+
+                          {editingLecture.status === "public" && (
+                            <div className="space-y-1">
+                              <div className="h-10 flex items-center text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                                ✅ هذه المحاضرة مجانية ومتاحة للجميع
+                              </div>
+                            </div>
+                          )}
+
+                          {editingLecture.status === "draft" && (
+                            <div className="space-y-1">
+                              <div className="h-10 flex items-center text-amber-600 dark:text-amber-400 text-xs font-bold">
+                                📝 هذه المحاضرة مسودة وغير ظاهرة للطلاب
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
@@ -1863,6 +1969,51 @@ export default function AdminPage() {
                   className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-xs font-bold h-11"
                 />
               </div>
+              <div>
+                <label className="text-xs font-bold block mb-2 text-slate-700 dark:text-slate-300">
+                  نوع الوحدة
+                </label>
+
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={newUnitAccess === "public"}
+                      onChange={() => {
+                        setNewUnitAccess("public");
+                        setNewUnitPrice(0);
+                      }}
+                    />
+                    مجانية
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={newUnitAccess === "paid"}
+                      onChange={() => setNewUnitAccess("paid")}
+                    />
+                    مدفوعة
+                  </label>
+                </div>
+              </div>
+
+              {newUnitAccess === "paid" && (
+                <div>
+                  <label className="text-xs font-bold block mb-1.5 text-slate-700 dark:text-slate-300">
+                    سعر الاشتراك (جنيه)
+                  </label>
+
+                  <Input
+                    type="number"
+                    min={1}
+                    value={newUnitPrice}
+                    onChange={(e) => setNewUnitPrice(Number(e.target.value))}
+                    placeholder="مثلاً 250"
+                    className="bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-xs font-bold h-11"
+                  />
+                </div>
+              )}
               <div className="flex gap-2 pt-2">
                 <Button type="submit" className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 hover:from-amber-600 hover:to-yellow-600 font-black py-5 flex-1 rounded-xl text-xs">
                   إضافة الوحدة الآن
@@ -1954,7 +2105,6 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* بطاقات المؤشرات العامة (KPI Cards) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center">
                 <span className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1 flex items-center gap-1.5">
@@ -2018,7 +2168,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* تفاصيل الاختبارات السابقة (Quiz Scores History Table) */}
             <div className="space-y-3">
               <h4 className="font-black text-sm text-slate-900 dark:text-slate-200 flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-500" />
